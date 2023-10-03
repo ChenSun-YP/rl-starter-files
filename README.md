@@ -48,7 +48,9 @@ Train, visualize and evaluate an agent on the `MiniGrid-DoorKey-5x5-v0` environm
 1. Train the agent on the `MiniGrid-DoorKey-5x5-v0` environment with PPO algorithm:
 
 ```
-python3 -m scripts.train --algo ppo --env MiniGrid-DoorKey-5x5-v0 --model DoorKey --save-interval 10 --frames 80000
+python -m scripts.train --algo ppo --env MiniGrid-DoorKey-5x5-v0 --model DoorKey --save-interval 10 --frames 80000
+
+python -m scripts.train --algo ppo --env  MiniGrid-BlendCrossDoorkey-v0 --model Blend --save-interval 10 --frames 80000
 ```
 
 <p align="center"><img src="README-rsrc/train-terminal-logs.png"></p>
@@ -56,7 +58,9 @@ python3 -m scripts.train --algo ppo --env MiniGrid-DoorKey-5x5-v0 --model DoorKe
 2. Visualize agent's behavior:
 
 ```
-python3 -m scripts.visualize --env MiniGrid-DoorKey-5x5-v0 --model DoorKey
+python -m scripts.visualize --env MiniGrid-DoorKey-5x5-v0 --model DoorKey
+python -m scripts.visualize --env MiniGrid-BlendCrossDoorkey-v0  --model Blend
+
 ```
 
 <p align="center"><img src="README-rsrc/visualize-doorkey.gif"></p>
@@ -65,6 +69,7 @@ python3 -m scripts.visualize --env MiniGrid-DoorKey-5x5-v0 --model DoorKey
 
 ```
 python3 -m scripts.evaluate --env MiniGrid-DoorKey-5x5-v0 --model DoorKey
+python3 -m scripts.evaluate --env MiniGrid-BlendCrossDoorkey-v0  --model Blend
 ```
 
 <p align="center"><img src="README-rsrc/evaluate-terminal-logs.png"></p>
