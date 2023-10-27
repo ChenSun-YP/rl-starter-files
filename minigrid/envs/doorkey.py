@@ -60,7 +60,7 @@ class DoorKeyEnv(MiniGridEnv):
 
     """
 
-    def __init__(self, size=8, max_steps: int | None = None, **kwargs):
+    def __init__(self, size=5, max_steps: int | None = None, **kwargs):
         if max_steps is None:
             max_steps = 10 * size**2
         mission_space = MissionSpace(mission_func=self._gen_mission)
@@ -80,7 +80,18 @@ class DoorKeyEnv(MiniGridEnv):
         self.grid.wall_rect(0, 0, width, height)
 
         # Place a goal in the bottom-right corner
-        self.put_obj(Goal(), width - 2, height - 2)
+        # in 50 percentage of the time
+        if width <8:
+            self.put_obj(Goal(), width - 2, height - 2)
+        elif self._rand_bool():
+            self.put_obj(Goal(), width - 2, height - 2)
+        else:
+            # Place a goal square in one step from bottom-right corner
+            # in 50 percentage of the time
+            if self._rand_bool():
+                self.put_obj(Goal(), width - 3, height - 2)
+            else:
+                self.put_obj(Goal(), width - 2, height - 3)
 
         # Create a vertical splitting wall
         splitIdx = self._rand_int(2, width - 2)

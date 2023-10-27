@@ -5,6 +5,8 @@ from torch_ac.utils.penv import ParallelEnv
 
 import utils
 from utils import device
+import matplotlib.pyplot as plt
+
 
 
 # Parse arguments
@@ -114,3 +116,10 @@ if __name__ == "__main__":
         indexes = sorted(range(len(logs["return_per_episode"])), key=lambda k: logs["return_per_episode"][k])
         for i in indexes[:n]:
             print("- episode {}: R={}, F={}".format(i, logs["return_per_episode"][i], logs["num_frames_per_episode"][i]))
+
+
+    plt.plot(logs["return_per_episode"])
+    plt.xlabel("Episode")
+    plt.ylabel("Return")
+    plt.title(args.env + "Return per Episode" + args.model)
+    plt.show()

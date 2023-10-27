@@ -8,7 +8,9 @@ import sys
 import utils
 from utils import device
 from model import ACModel
-
+from ali import AgentNetwork
+import matplotlib.pyplot as plt
+import pandas as pd
 
 # Parse arguments
 
@@ -101,6 +103,7 @@ if __name__ == "__main__":
         envs.append(utils.make_env(args.env, args.seed + 10000 * i))
     txt_logger.info("Environments loaded\n")
 
+
     # Load training status
 
     try:
@@ -117,13 +120,25 @@ if __name__ == "__main__":
     txt_logger.info("Observations preprocessor loaded")
 
     # Load model
-
+    
     acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text)
+    # acmodel2 = AgentNetwork(obs_space, envs[0].action_space, args.mem, args.text)
     if "model_state" in status:
         acmodel.load_state_dict(status["model_state"])
     acmodel.to(device)
     txt_logger.info("Model loaded\n")
     txt_logger.info("{}\n".format(acmodel))
+    try:
+        txt_logger.info("{}\n".format( envs[0].unwrapped.envs))
+    except:
+        txt_logger.info("{}\n".format(envs[0]))
+    try:
+        txt_logger.info("{}\n".format( envs[0].unwrapped.current_env))
+    except:
+        txt_logger.info("{}\n".format(envs[0]))
+
+
+
 
     # Load algo
 
@@ -201,3 +216,21 @@ if __name__ == "__main__":
                 status["vocab"] = preprocess_obss.vocab.vocab
             utils.save_status(status, model_dir)
             txt_logger.info("Status saved")
+
+    # plt.plot(logs["return_per_episode"])
+    # plt.xlabel("Episode")
+    # plt.ylabel("Return")
+    # plt.title("Return per Episode")
+    # plt.show()
+    df = pd.read_csv(os.path.join(model_dir, "log.csv"))
+
+    # Extract the return mean column and plot it as a line graph
+    df['return_mean'].plot()
+
+    # Set the plot title and axis labels
+    plt.title('Return Mean')
+    plt.xlabel('Update')
+    plt.ylabel('Return Mean')
+
+    # Display the plot
+    plt.show()

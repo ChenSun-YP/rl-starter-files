@@ -5,6 +5,7 @@ from torch.distributions.categorical import Categorical
 import torch_ac
 
 
+
 # Function from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
 def init_params(m):
     classname = m.__class__.__name__
@@ -16,12 +17,13 @@ def init_params(m):
 
 
 class ACModel(nn.Module, torch_ac.RecurrentACModel):
-    def __init__(self, obs_space, action_space, use_memory=False, use_text=False):
+    def __init__(self, obs_space, action_space, use_memory=False, use_text=False,concatenate_context=False):
         super().__init__()
 
         # Decide which components are enabled
         self.use_text = use_text
         self.use_memory = use_memory
+        self.concatenate_context = concatenate_context
 
         # Define image embedding
         self.image_conv = nn.Sequential(
@@ -52,10 +54,14 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         self.embedding_size = self.semi_memory_size
         if self.use_text:
             self.embedding_size += self.text_embedding_size
+        if self.concatenate_context:
+            self.context_size = 4
+        else:
+            self.context_size = 0
 
         # Define actor's model
         self.actor = nn.Sequential(
-            nn.Linear(self.embedding_size, 64),
+            nn.Linear(self.embedding_size+self.context_size, 64),
             nn.Tanh(),
             nn.Linear(64, action_space.n)
         )

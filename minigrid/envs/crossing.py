@@ -86,7 +86,7 @@ class CrossingEnv(MiniGridEnv):
 
     def __init__(
         self,
-        size=9,
+        size=5,
         num_crossings=1,
         obstacle_type=Lava,
         max_steps: int | None = None,
@@ -133,7 +133,17 @@ class CrossingEnv(MiniGridEnv):
         self.agent_dir = 0
 
         # Place a goal square in the bottom-right corner
-        self.put_obj(Goal(), width - 2, height - 2)
+        # in 50 percentage of the time
+        if self._rand_bool():
+            self.put_obj(Goal(), width - 2, height - 2)
+        else:
+            # Place a goal square in one step from bottom-right corner
+            # in 50 percentage of the time
+            if self._rand_bool():
+                self.put_obj(Goal(), width - 3, height - 2)
+            else:
+                self.put_obj(Goal(), width - 2, height - 3)
+
 
         # Place obstacles (lava or walls)
         v, h = object(), object()  # singleton `vertical` and `horizontal` objects
