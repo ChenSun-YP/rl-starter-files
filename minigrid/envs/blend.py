@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class BlendedEnv(MiniGridEnv):
     def __init__(
             self,
-            t=4000,
+            t=40,
             size=3,
             max_steps=None,
             agent_view_size: int = 7,
