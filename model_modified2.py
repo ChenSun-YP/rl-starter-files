@@ -85,6 +85,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
 
         # define a world model for identifing and perdicting the context
         self.world_model = WorldModel(image_shape=(7, 7, 3), latent_dim=4, hidden_size=64)
+        self.internal_model = InternalModel(image_shape=(7, 7, 3), latent_dim=4, hidden_size=64)
 
         # Initialize parameters correctly
         self.apply(init_params)
@@ -131,50 +132,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         _, hidden = self.text_rnn(self.word_embedding(text))
         return hidden[-1]
     
-    def update_context(self, y, x, n_iters=200, threshold=1e-2):
-      """
-      x (n x seq_len * feature_dim)
-      y (n x 1)           or (1, )
-      ... where n is the batch size
-      """
-      # find context representation
-      losses = []
-      for i in range(n_iters):
-          yhat, _ = self.forward(x)
-          loss = self.context_criterion(yhat, y)
-          self._update_context(loss)
-          losses.append(loss.data)
-          loss_stopped_ = loss_stopped(losses, threshold=threshold)
-          if loss_stopped_:
-              break
-      if not loss_stopped_:
-          print(f'Context loss did NOT converge after {n_iters} iterations.')
-          pass
-      
 
-          def loss_stopped(losses, threshold=1e-2, patience=10):
-            """
-            Check if the loss has stopped decreasing.
-
-            Parameters:
-            - losses: A list of loss values.
-            - threshold: The threshold for the relative change in loss.
-            - patience: The number of iterations to wait before stopping.
-
-            Returns:
-            - True if the loss has stopped decreasing, False otherwise.
-            """
-            if len(losses) < patience:
-              return False
-            else:
-              last_losses = losses[-patience:]
-              relative_change = abs(last_losses[-1] - last_losses[0]) / last_losses[0]
-              return relative_change < threshold
-
-    def _update_context(self, loss):
-      self.context_optimizer.zero_grad()
-      loss.backward()
-      self.context_optimizer.step()
 
 
 
@@ -257,3 +215,78 @@ class WorldModel(nn.Module):
         predicted_image = predicted_image.permute(0, 2, 3, 1)
         # print('predicted_image',predicted_image.shape)
         return predicted_image  # Return it in the same format as the input
+
+
+class InternalModel(nn.Module):
+    '''
+    This is the internal model for the agent to predict the next latent_z
+    '''
+    def __init__(self, image_shape, latent_dim, hidden_size):
+        super(InternalModel, self).__init__()
+        # Image shape is HWC, but PyTorch expects CHW, so we permute
+        self.channels, self.height, self.width = image_shape[2], image_shape[0], image_shape[1]
+        self.latent_dim = latent_dim
+        self.hidden_size = hidden_size
+
+        # Encoder: Convolutional layers to process input image
+        self.encoder = nn.Sequential(
+            nn.Conv2d(self.channels, 16, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # this will reduce each spatial dimension by half
+            # Add more layers if necessary
+        )
+
+        # Compute the flattened size of the feature maps after the convolutional layers
+        self.flattened_size = self._get_flattened_size()
+
+        # Fully connected layers for encoding
+        self.fc_encoder = nn.Sequential(
+            nn.Linear(self.flattened_size + self.latent_dim, self.hidden_size),
+            nn.ReLU(),
+            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.ReLU(),
+        )
+
+        # Decoder: Fully connected layers to project back to feature map size
+        self.fc_decoder = nn.Sequential(
+            nn.Linear(self.hidden_size, self.flattened_size),
+            nn.ReLU()
+        )
+        # decoder, from feature map to latent_z
+        self.fc_decoder_z = nn.Sequential(
+            nn.Linear(self.hidden_size, self.latent_dim),
+            nn.ReLU()
+        )
+
+
+    def _get_flattened_size(self):
+        # Pass a dummy tensor through the encoder to compute the size of the flattened feature maps
+        with torch.no_grad():
+            dummy_input = torch.randn(1, self.channels, self.height, self.width)
+            dummy_output = self.encoder(dummy_input)
+            return int(np.prod(dummy_output.size()[1:]))
+
+    def forward(self, obs, latent_z):
+        # take in the image and current latent_z, output the next latent_z
+        # Permute the obs image to be in the format [batch_size, channels, height, width]
+        x = obs.image.permute(0, 3, 1, 2)
+        # Pass the image through the encoder and flatten the output
+        encoded_features = self.encoder(x)
+        encoded_features = encoded_features.reshape(encoded_features.size(0), -1)
+
+        # Concatenate the encoded features with the latent vector
+        latent_z_batched = latent_z.unsqueeze(0).repeat(encoded_features.size(0), 1)
+        combined = torch.cat((encoded_features, latent_z_batched), dim=1)
+
+        # Pass through the fully connected encoder
+        encoded = self.fc_encoder(combined)
+
+        # Decode the encoded state into feature map size
+        decoded_features = self.fc_decoder(encoded)
+        decoded_features = decoded_features.reshape(-1, 16, self.height // 2, self.width // 2)
+
+        decoded_z = self.fc_decoder_z(decoded_features)
+        # print('decoded_image',decoded_image.shape)
+        return decoded_z
+
+        
