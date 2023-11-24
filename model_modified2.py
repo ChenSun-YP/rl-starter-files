@@ -254,7 +254,7 @@ class InternalModel(nn.Module):
         )
         # decoder, from feature map to latent_z
         self.fc_decoder_z = nn.Sequential(
-            nn.Linear(self.hidden_size, self.latent_dim),
+            nn.Linear(self.flattened_size, self.latent_dim),
             nn.ReLU()
         )
 
@@ -283,9 +283,9 @@ class InternalModel(nn.Module):
 
         # Decode the encoded state into feature map size
         decoded_features = self.fc_decoder(encoded)
-        decoded_features = decoded_features.reshape(-1, 16, self.height // 2, self.width // 2)
 
         decoded_z = self.fc_decoder_z(decoded_features)
+
         # print('decoded_image',decoded_image.shape)
         return decoded_z
 
