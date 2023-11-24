@@ -17,7 +17,7 @@ def init_params(m):
 
 
 class ACModel(nn.Module, torch_ac.RecurrentACModel):
-    def __init__(self, obs_space, action_space, use_memory=False, use_text=False,concatenate_context=False):
+    def __init__(self, obs_space, action_space, context_size=0, use_memory=False, use_text=False,concatenate_context=False):
         super().__init__()
 
         # Decide which components are enabled
@@ -27,8 +27,11 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         self.use_memory = use_memory
         self.concatenate_context = concatenate_context
         self.use_context = True
-        self.context_size=4
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.my_context_size = context_size
+        tensor1 = torch.rand(16, 4)
+        self.context_vector= nn.Parameter(torch.randn(16, 4))
+        print('CONTEXT VECTOR',self.context_vector)
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Define image embedding
         self.image_conv = nn.Sequential(
             nn.Conv2d(3, 16, (2, 2)),
@@ -46,9 +49,8 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         # Resize image embedding
         self.embedding_size = self.semi_memory_size
 
-
          # Add context inference related parameters and layers
-        self.context_inputs = torch.nn.Parameter(torch.ones(self.context_size, device=self.device)/self.context_size)
+        self.context_inputs = torch.nn.Parameter(torch.ones(self.my_context_size)/self.my_context_size)
         print('CONTEXTINPUT',self.context_inputs)
         self.context_wts = [{"params": self.context_inputs}]
         self.context_criterion = torch.nn.CrossEntropyLoss()
@@ -72,25 +74,35 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
             self.text_rnn = nn.GRU(self.word_embedding_size, self.text_embedding_size, batch_first=True)
 
         if self.use_context:
-            self.context_embedding_size = 32   
-            self.context_embedding = nn.Embedding(obs_space["context"], self.context_embedding_size)
-            self.text_embedding_size = 128
-            self.text_rnn = nn.GRU(self.context_embedding_size, self.text_embedding_size, batch_first=True)
+            self.context_embedding_size = 16
+            print('CONTEXT VECTOR',self.context_vector)
+            self.context_embedding = nn.Embedding(4, 4)
+            self.context_rnn = nn.GRU(4, self.context_embedding_size, batch_first=True)
+            print('CONTEXT EMBEDDING',self.context_embedding,self.context_embedding.weight)
+            print('CONTEXT RNN',self.context_rnn)
 
-        # Define actor's model
+            # self.context_rnn = nn.GRU(self.context_embedding_size, self.context_embedding_size, batch_first=True)
+
+        # Define actor's model for policy
         self.actor = nn.Sequential(
-            nn.Linear(self.embedding_size+self.context_size, 64),
+            nn.Linear(self.embedding_size+ self.my_context_size, 64),
             nn.Tanh(),# hidden
             nn.Linear(64, action_space.n)
         )
 
-        # Define critic's model
+        # Define critic's model for value function
         self.critic = nn.Sequential(
-            nn.Linear(self.embedding_size, 64),
+            nn.Linear(self.embedding_size+ self.my_context_size, 64),
             nn.Tanh(),#hidden
             nn.Linear(64, 1)
         )
-
+        # define a model for world perdiction
+        self.world = nn.Sequential(
+            nn.Linear(self.contact, 64),
+            nn.Tanh(),# hidden
+            # the final output is the latent context Z
+            nn.Linear(64, self.my_context_size)
+        )
         # Initialize parameters correctly
         self.apply(init_params)
 
@@ -101,17 +113,19 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
     @property
     def semi_memory_size(self):
         return self.image_embedding_size
+    @property
+    def context_size(self):
+        return 2*self.semi_context_size
 
-    def forward(self, obs, memory,return_ctxt=False):
+    @property
+    def semi_context_size(self):
+        return self.image_embedding_size
+
+    def forward(self, obs, memory,context, return_ctxt=False):
         x = obs.image.transpose(1, 3).transpose(2, 3)
         x = self.image_conv(x)
         x = x.reshape(x.shape[0], -1)
-
-        # Get context representation
-        # context_repr = self.get_context_repr(x)
-        # Concatenate context representation to image embedding
-        # x = torch.cat([x, context_repr], dim=1)
-
+        print(x.shape)
 
         if self.use_memory:
             hidden = (memory[:, :self.semi_memory_size], memory[:, self.semi_memory_size:])
@@ -125,26 +139,15 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
             embed_text = self._get_embed_text(obs.text)
             embedding = torch.cat((embedding, embed_text), dim=1)
         if self.use_context:
-
-            embed_context = self._get_embed_context(obs.context) #TODO
-            embedding = torch.cat((embedding, embed_context[:, -1, :]), dim=1)
-        multiplicative_context = True
-        if not self.concatenate_context:
-            if multiplicative_context:
-                context_repr = self.context_inputs.tanh() # get the context latent
-                context_repr = context_repr.unsqueeze(0).unsqueeze(1).expand(embedding.size())# reshape like hidden_states
-                context_aware_hidden = embedding * context_repr # modulate hidden state by context (multiplicative interaction)
-            else:
-                context_repr = torch.sigmoid(self.context_inputs, ) # get the context latent
-                context_repr = context_repr.unsqueeze(0).unsqueeze(1).expand(embedding.size())# reshape like hidden_states
-                context_aware_hidden = embedding + context_repr # modulate hidden state by context (multiplicative interaction)
-            # modulate hidden state by context
-            # last_context_hidden = context_aware_hidden[:, -1, :] # get the last context modulated hidden state
-        else:
-            # last_context_hidden = embedding[:, -1, :]
-            context_repr = self.context_inputs # get the context latent
-
-
+            # context is coming from the world model/storein model obejct
+            print(self.context_vector.dim())
+            embed_context = self._get_embed_context(torch.tensor([0,1,2,3]))
+            embed_context = embed_context.view(16, 1)
+            print('EMBED CONTEXT',embed_context.shape)
+            print('EMBEDDING',embedding.shape)
+            embedding = torch.cat((embedding, embed_context), dim=1)
+        
+        print('EMBEDDING',embedding.shape,x.shape)
         x = self.actor(embedding)
         dist = Categorical(logits=F.log_softmax(x, dim=1))
 
@@ -153,7 +156,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         
         if return_ctxt: # return latent context in addition to output and hidden state
             # first reshape
-            return  dist, value, memory, context_repr
+            return  dist, value, memory, context
         else:
             return dist, value, memory
 
@@ -161,7 +164,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         _, hidden = self.text_rnn(self.word_embedding(text))
         return hidden[-1]
     def _get_embed_context(self, context):
-        _, hidden = self.text_rnn(self.context_embedding(context))
+        _, hidden = self.context_rnn(self.context_embedding(context))
         return hidden[-1]
     
 

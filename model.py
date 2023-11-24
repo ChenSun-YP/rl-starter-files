@@ -25,6 +25,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         self.use_text = use_text
         self.use_memory = use_memory
         self.concatenate_context = concatenate_context
+        self.concatenate_context = concatenate_context
 
         # Define image embedding
         self.image_conv = nn.Sequential(

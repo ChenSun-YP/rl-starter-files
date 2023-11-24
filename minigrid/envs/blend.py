@@ -55,6 +55,7 @@ class BlendedEnv(MiniGridEnv):
 
     def step(self, action):
         # Perform the step in the current environment
+        self.current_obs = self.current_env.gen_obs() 
         self.step_count += 1  # Increment step count
         self.observation_space["image"] = self.current_env.observation_space["image"]
         self.observation_space["direction"] = self.current_env.observation_space["direction"]

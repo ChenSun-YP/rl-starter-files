@@ -52,6 +52,7 @@ python -m scripts.train --algo ppo --env MiniGrid-DoorKey-5x5-v0 --model DoorKey
 
 python -m scripts.train --algo ppo --env  MiniGrid-BlendCrossDoorkey-v0 --model Blendnoswap --save-interval 10 --frames 80000
 python -m scripts.train --algo ppo --env  MiniGrid-BlendCrossDoorkey-v0 --model Blend1swap --save-interval 10 --frames 80000
+python -m scripts.train --algo ppo2 --env  MiniGrid-BlendCrossDoorkey-v0 --model Blend1swap --save-interval 10 --frames 80000
 
 ```
 

@@ -9,11 +9,13 @@ import sys
 import utils
 from utils import device
 from model import ACModel
-from model_modified import ACModel
+# from model_modified import ACModel
+from model_modified2 import ACModel
+
 from ali import AgentNetwork
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import torch
 # Parse arguments
 
 parser = argparse.ArgumentParser()
@@ -65,6 +67,8 @@ parser.add_argument("--recurrence", type=int, default=1,
                     help="number of time-steps gradient is backpropagated (default: 1). If > 1, a LSTM is added to the model to have memory.")
 parser.add_argument("--text", action="store_true", default=False,
                     help="add a GRU to the model to handle text input")
+parser.add_argument("--context_size", type=int, default=4,
+                    help="add a context latent z into the model")
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -122,11 +126,22 @@ if __name__ == "__main__":
     txt_logger.info("Observations preprocessor loaded")
 
     # Load model
-    
-    acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text)
+    args.context_size = 4
+    acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text,args.context_size)
     # acmodel = AgentNetwork(obs_space, envs[0].action_space, args.mem, args.text)
     if "model_state" in status:
         acmodel.load_state_dict(status["model_state"])
+    # Initialize world model's weights if they were not loaded
+    if 'world_model' in vars(acmodel).keys():  # Check if world_model attribute exists
+    # Define the initialization function
+        def init_weights(m):
+            if type(m) ==torch.nn.Linear:
+                torch.nn.init.xavier_uniform_(m.weight)
+                m.bias.data.fill_(0.01)
+
+    # Apply the initialization to the world model
+        acmodel.world_model.apply(init_weights)
+    txt_logger.info("World model weights initialized")
     acmodel.to(device)
     txt_logger.info("Model loaded\n")
     txt_logger.info("{}\n".format(acmodel))
@@ -152,7 +167,7 @@ if __name__ == "__main__":
         algo = torch_ac.PPOAlgo(envs, acmodel, device, args.frames_per_proc, args.discount, args.lr, args.gae_lambda,
                                 args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                                 args.optim_eps, args.clip_eps, args.epochs, args.batch_size, preprocess_obss)
-    elif args.algo == "ppo_2":
+    elif args.algo == "ppo2":
         algo = torch_ac.PPO2Algo(envs, acmodel, device, args.frames_per_proc, args.discount, args.lr, args.gae_lambda,
                                 args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                                 args.optim_eps, args.clip_eps, args.epochs, args.batch_size, preprocess_obss)
@@ -172,7 +187,7 @@ if __name__ == "__main__":
     while num_frames < args.frames:
         # Update model parameters
         update_start_time = time.time()
-        exps, logs1 = algo.collect_experiences()
+        exps, logs1 = algo.collect_experiences(latent_z=algo.latent_z)
         logs2 = algo.update_parameters(exps)
         logs = {**logs1, **logs2}
         update_end_time = time.time()
@@ -196,12 +211,12 @@ if __name__ == "__main__":
             header += ["num_frames_" + key for key in num_frames_per_episode.keys()]
             data += num_frames_per_episode.values()
             header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm"]
-            data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"]]
+            data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"]]
 
             txt_logger.info(
-                "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}"
+                "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f}"
                 .format(*data))
-
+            txt_logger.info(algo.latent_z)
             header += ["return_" + key for key in return_per_episode.keys()]
             data += return_per_episode.values()
 
