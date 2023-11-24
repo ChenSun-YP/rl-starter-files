@@ -269,6 +269,8 @@ class InternalModel(nn.Module):
     def forward(self, obs, latent_z):
         # take in the image and current latent_z, output the next latent_z
         # Permute the obs image to be in the format [batch_size, channels, height, width]
+        # if obs is a list stop and print the shape
+          
         x = obs.image.permute(0, 3, 1, 2)
         # Pass the image through the encoder and flatten the output
         encoded_features = self.encoder(x)
