@@ -13,10 +13,11 @@ logger = logging.getLogger(__name__)
 class BlendedEnv(MiniGridEnv):
     def __init__(
             self,
-            t=4000,
+            t=400,
             size=3,
             max_steps=None,
             agent_view_size: int = 7,
+            ground_truth_task=True, # the ground truth task is the task that the agent is trained on
 
             **kwargs):
         # global blended_instance
@@ -27,6 +28,12 @@ class BlendedEnv(MiniGridEnv):
             DoorKeyEnv(size=5, max_steps=max_steps, **kwargs),
             CrossingEnv(size=5, max_steps=max_steps, **kwargs)
         ]
+        if ground_truth_task is True:
+            #init the ground latent z for two subenvs with a 1*4 shape tensor
+            self.envs[0].ground_truth_z = np.array([[1, 0, 0, 0]])
+            self.envs[1].ground_truth_z = np.array([[0, 0, 0, 1]])
+
+
 
 
         # Which environment is currently active
@@ -69,7 +76,7 @@ class BlendedEnv(MiniGridEnv):
         # If it's time to swap the environment
         if self.step_count % self.t == 0:
             obs = self.swap_env(obs)
-            logger.info(f"step Swapping environment to {action, self.step_count , self.t,self.current_env.__class__.__name__}")
+            # logger.info(f"step Swapping environment to {action, self.step_count , self.t,self.current_env.__class__.__name__}")
 
 
         # Return the tasks and current task
@@ -77,6 +84,7 @@ class BlendedEnv(MiniGridEnv):
         # current_task = self.current_env.__class__.__name__
         return obs, reward, done, truncated, info
     def swap_env(self, obs):
+        old = self.current_env.ground_truth_z
         # Get the current agent position from the observation's image
         agent_identifier = [1, 0, 0]
         agent_positions = np.argwhere(np.all(obs['image'] == agent_identifier, axis=-1))
@@ -100,14 +108,18 @@ class BlendedEnv(MiniGridEnv):
         self.current_env.agent_dir = obs['direction']  # Assuming the direction is the same
         # Regenerate the observation after changing the agent's position and direction
         new_obs = self.current_env.gen_obs()
+        #print the old env latent z and updated one to check if it is updated
+        print(old,'switched to',self.current_env.ground_truth_z)
         return new_obs
 
     def reset(self, **kwargs):
         self.episode_count += 1
-        if self.episode_count % self.t == 0:
-            self.swap_active_env()
-            logger.info(f"reset Swapping environment to {self.current_env.__class__.__name__}")
+        # if self.episode_count % self.t == 0:
+        #     self.swap_active_env()
+        #     logger.info(f"reset Swapping environment to {self.current_env.__class__.__name__}")
         obs = self.current_env.reset(**kwargs)
+
+
         return obs
 
 

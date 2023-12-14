@@ -74,6 +74,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.mem = args.recurrence > 1
+    
 
     # Set run dir
 

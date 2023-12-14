@@ -467,6 +467,7 @@ class MiniGridEnv(gym.Env):
             topX = self.agent_pos[0] - agent_view_size // 2
             topY = self.agent_pos[1] - agent_view_size + 1
         else:
+            print(self.agent_dir)
             assert False, "invalid agent direction"
 
         botX = topX + agent_view_size

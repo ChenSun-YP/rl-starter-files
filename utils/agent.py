@@ -2,7 +2,7 @@ import torch
 
 import utils
 from .other import device
-from model import ACModel
+from model_modified2 import ACModel
 
 
 class Agent:
@@ -21,7 +21,6 @@ class Agent:
 
         if self.acmodel.recurrent:
             self.memories = torch.zeros(self.num_envs, self.acmodel.memory_size, device=device)
-
         self.acmodel.load_state_dict(utils.get_model_state(model_dir))
         self.acmodel.to(device)
         self.acmodel.eval()

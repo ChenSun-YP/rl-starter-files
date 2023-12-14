@@ -16,7 +16,14 @@ def init_params(m):
         if m.bias is not None:
             m.bias.data.fill_(0)
 
+class ConcatenateEmbeddingLatentZ(nn.Module):
+    def __init__(self, embedding_size, latent_z_size, output_size):
+        super().__init__()
+        self.fc = nn.Linear(embedding_size + latent_z_size, output_size)
 
+    def forward(self, embedding, latent_z):
+        combined_input = torch.cat((embedding, latent_z), dim=1)
+        return self.fc(combined_input)
 
 class ACModel(nn.Module, torch_ac.RecurrentACModel):
     def __init__(self, obs_space, action_space, use_memory=False, use_text=False,concatenate_context=True):
@@ -63,23 +70,32 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
             self.context_size = 0
         self.context_inputs=torch.nn.Parameter(torch.ones(self.context_size)/self.context_size)
         self.context_wts = [{"params": self.context_inputs}]
-        self.context_criterion = torch.nn.CrossEntropyLoss()
-        self.context_lr = 0.1
+        # self.context_criterion = torch.nn.CrossEntropyLoss()
+        # self.context_lr = 0.1
 
 
-        # Define actor's model
-        self.actor = nn.Sequential(
-            nn.Linear(self.embedding_size+4, 64),
-            nn.Tanh(),
-            nn.Linear(64, action_space.n)
-        )
+        self.concat_layer = ConcatenateEmbeddingLatentZ(self.embedding_size, 4, 64)
 
-        # Define critic's model
-        self.critic = nn.Sequential(
-            nn.Linear(self.embedding_size+4, 64),
-            nn.Tanh(),
-            nn.Linear(64, 1)
-        )
+        # Define actor's model with the custom concatenation layer
+        # self.actor = nn.Sequential(
+        #     self.concat_layer,
+        #     nn.Tanh(),
+        #     nn.Linear(64, action_space.n)
+        # )
+
+        # # Define critic's model with the custom concatenation layer
+        # self.critic = nn.Sequential(
+        #     self.concat_layer,
+        #     nn.Tanh(),
+        #     nn.Linear(64, 1)
+        # )
+        self.actor_fc1 = nn.Linear(self.embedding_size, 64)
+        self.actor_fc2 = nn.Linear(64 + 4, action_space.n)  # Additional 4 for latent_z
+
+        # Critic model layers
+        self.critic_fc1 = nn.Linear(self.embedding_size, 64)
+        self.critic_fc2 = nn.Linear(64 + 4, 1)  # Additional 4 for latent_z
+
 
 
 
@@ -98,7 +114,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
     def semi_memory_size(self):
         return self.image_embedding_size
 
-    def forward(self, obs, memory,latent_z):
+    def forward(self, obs, memory,latent_z=None):
         x = obs.image.transpose(1, 3).transpose(2, 3)
         x = self.image_conv(x)
         x = x.reshape(x.shape[0], -1)
@@ -114,20 +130,29 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         if self.use_text:
             embed_text = self._get_embed_text(obs.text)
             embedding = torch.cat((embedding, embed_text), dim=1)
-        
+        latent_z = torch.randn(4, requires_grad=True)  # todo, this hard code the latent z
         batch_size, _ = x.shape
         # print(embedding.shape) #torch.Size([16, 64])
         latent_z_batched = latent_z.unsqueeze(0).repeat(embedding.size(0), 1)
+        # embedding = torch.cat((embedding,latent_z_batched), dim=1)
+        actor_embedding = self.actor_fc1(embedding)
+        critic_embedding = self.critic_fc1(embedding)
+        actor_combined = torch.cat((actor_embedding, latent_z_batched), dim=1)
+        critic_combined = torch.cat((critic_embedding, latent_z_batched), dim=1)
 
-        embedding = torch.cat((embedding,latent_z_batched), dim=1)
+        # Apply the second layer of actor and critic
+        actor_output = self.actor_fc2(actor_combined)
+        critic_output = self.critic_fc2(critic_combined).squeeze(1)
 
-        x = self.actor(embedding)
-        dist = Categorical(logits=F.log_softmax(x, dim=1))
 
-        x = self.critic(embedding)
+
+        # x = self.actor(embedding,latent_z)
+        dist = Categorical(logits=F.log_softmax(actor_output, dim=1))
+
+        # x = self.critic(embedding,latent_z)
         value = x.squeeze(1)
 
-        return dist, value, memory
+        return dist, critic_output, memory
     def _get_embed_text(self, text):
         _, hidden = self.text_rnn(self.word_embedding(text))
         return hidden[-1]
