@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class BlendedEnv(MiniGridEnv):
     def __init__(
             self,
-            t=400,
+            t=800,
             size=3,
             max_steps=None,
             agent_view_size: int = 7,
@@ -74,6 +74,10 @@ class BlendedEnv(MiniGridEnv):
             return obs, reward, done, truncated, info
 
         # If it's time to swap the environment
+        #if the frame is a multiple of t, swap the environment  
+        #fetch the current frame from the current env
+
+        
         if self.step_count % self.t == 0:
             obs = self.swap_env(obs)
             # logger.info(f"step Swapping environment to {action, self.step_count , self.t,self.current_env.__class__.__name__}")
@@ -109,8 +113,36 @@ class BlendedEnv(MiniGridEnv):
         # Regenerate the observation after changing the agent's position and direction
         new_obs = self.current_env.gen_obs()
         #print the old env latent z and updated one to check if it is updated
-        print(old,'switched to',self.current_env.ground_truth_z)
+        # print(old,'switched to',self.current_env.ground_truth_z) todo why is this poping mulitple times?
         return new_obs
+    def swap_active_env(self):
+        # Switch the environment
+        self.current_env_idx = 1 - self.current_env_idx
+        self.current_env = self.envs[self.current_env_idx]
+        # check the agent is in the right position
+        # Get the current agent position from the observation's image
+        # agent_identifier = [1, 0, 0]
+        # agent_positions = np.argwhere(np.all(self.current_obs['image'] == agent_identifier, axis=-1))
+        # # check if its a valid position
+        # if agent_positions.shape[0] > 0:
+        #     agent_pos = agent_positions[0]
+        # else:
+        #     agent_pos = [0, 0]
+        # # Adjust agent_pos to be within the new environment's valid navigable area
+        # agent_pos[0] = min(max(agent_pos[0], 1), self.current_env.width - 2)
+        # agent_pos[1] = min(max(agent_pos[1], 1), self.current_env.height - 2)
+        # # Reset the new environment and place the agent in the same position
+        # self.current_env.reset()
+        # self.current_env.agent_pos = agent_pos
+        # self.current_env.agent_dir = self.current_obs['direction']
+        # # Regenerate the observation after changing the agent's position and direction
+        # new_obs = self.current_env.gen_obs()
+        
+
+
+
+        
+
 
     def reset(self, **kwargs):
         self.episode_count += 1
@@ -130,3 +162,12 @@ class BlendedEnv(MiniGridEnv):
 
     def _gen_mission(self):
         return self.current_env._gen_mission()
+    def get_env_name(self):
+        if self.current_env_idx == None:
+            return "no"
+        if self.current_env_idx == 0:
+            return "doorkey"
+        else:
+            return "crossing"
+        
+        
