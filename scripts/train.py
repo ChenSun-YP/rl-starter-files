@@ -8,7 +8,7 @@ import sys
 
 import utils
 from utils import device
-from model import ACModel
+from model import ACModel  as BaseACModel
 # from model_modified import ACModel
 from model_modified2 import ACModel
 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     date = datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
     default_model_name = f"{args.env}_{args.algo}_seed{args.seed}_{date}"
 
-    model_name = args.model or default_model_name
+    model_name = args.model+str(args.seed) or default_model_name
     model_dir = utils.get_model_dir(model_name)
 
     # Load loggers and Tensorboard writer
@@ -128,33 +128,59 @@ if __name__ == "__main__":
 
     # Load model
     args.context_size = 4
-    acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text,args.context_size)
-    # acmodel = AgentNetwork(obs_space, envs[0].action_space, args.mem, args.text)
-    if "model_state" in status:
-        acmodel.load_state_dict(status["model_state"])
-    # Initialize world model's weights if they were not loaded
-    if 'world_model' in vars(acmodel).keys():  # Check if world_model attribute exists
-    # Define the initialization function
-        def init_weights(m):
-            if type(m) ==torch.nn.Linear:
-                torch.nn.init.xavier_uniform_(m.weight)
-                m.bias.data.fill_(0.01)
+    if args.algo == "ppo2":
 
-    # Apply the initialization to the world model
-        acmodel.world_model.apply(init_weights)
-    txt_logger.info("World model weights initialized")
-    acmodel.to(device)
-    txt_logger.info("Model loaded\n")
-    txt_logger.info("{}\n".format(acmodel))
-    try:
-        txt_logger.info("{}\n".format( envs[0].unwrapped.envs))
-    except:
-        txt_logger.info("{}\n".format(envs[0]))
-    try:
-        txt_logger.info("{}\n".format( envs[0].unwrapped.current_env))
-    except:
-        txt_logger.info("{}\n".format(envs[0]))
+        acmodel = ACModel(obs_space, envs[0].action_space, args.mem, args.text,args.context_size)
+        # acmodel = AgentNetwork(obs_space, envs[0].action_space, args.mem, args.text)
+        if "model_state" in status:
+            acmodel.load_state_dict(status["model_state"])
+        # Initialize world model's weights if they were not loaded
+        if 'world_model' in vars(acmodel).keys():  # Check if world_model attribute exists
+        # Define the initialization function
+            def init_weights(m):
+                if type(m) ==torch.nn.Linear:
+                    torch.nn.init.xavier_uniform_(m.weight)
+                    m.bias.data.fill_(0.01)
 
+        # Apply the initialization to the world model
+            acmodel.world_model.apply(init_weights)
+        txt_logger.info("World model weights initialized")
+        acmodel.to(device)
+        txt_logger.info("Model loaded\n")
+        txt_logger.info("{}\n".format(acmodel))
+        try:
+            txt_logger.info("{}\n".format( envs[0].unwrapped.envs))
+        except:
+            txt_logger.info("{}\n".format(envs[0]))
+        try:
+            txt_logger.info("{}\n".format( envs[0].unwrapped.current_env))
+        except:
+            txt_logger.info("{}\n".format(envs[0]))
+    else:
+        acmodel = BaseACModel(obs_space, envs[0].action_space, args.mem, args.text)
+        # acmodel = AgentNetwork(obs_space, envs[0].action_space, args.mem, args.text)
+        if "model_state" in status:
+            acmodel.load_state_dict(status["model_state"])
+        # Initialize world model's weights if they were not loaded
+        if 'world_model' in vars(acmodel).keys():  # Check if world_model attribute exists
+        # Define the initialization function
+            def init_weights(m):
+                if type(m) ==torch.nn.Linear:
+                    torch.nn.init.xavier_uniform_(m.weight)
+                    m.bias.data.fill_(0.01)
+
+        # Apply the initialization to the world model
+        acmodel.to(device)
+        txt_logger.info("Model loaded\n")
+        txt_logger.info("{}\n".format(acmodel))
+        try:
+            txt_logger.info("{}\n".format( envs[0].unwrapped.envs))
+        except:
+            txt_logger.info("{}\n".format(envs[0]))
+        try:
+            txt_logger.info("{}\n".format( envs[0].unwrapped.current_env))
+        except:
+            txt_logger.info("{}\n".format(envs[0]))
 
 
 
@@ -188,7 +214,10 @@ if __name__ == "__main__":
     while num_frames < args.frames:
         # Update model parameters
         update_start_time = time.time()
-        exps, logs1 = algo.collect_experiences(latent_z=algo.latent_z)
+        if args.algo == "ppo2":
+            exps, logs1 = algo.collect_experiences(latent_z=algo.latent_z)
+        else:
+            exps, logs1 = algo.collect_experiences()
         logs2 = algo.update_parameters(exps)
         logs = {**logs1, **logs2}
         update_end_time = time.time()
@@ -212,12 +241,22 @@ if __name__ == "__main__":
             header += ["num_frames_" + key for key in num_frames_per_episode.keys()]
             data += num_frames_per_episode.values()
             header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm"]
-            data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"]]
+            if args.algo == "ppo2":
 
-            txt_logger.info(
+                data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"]]
+                txt_logger.info(
                 "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f}"
                 .format(*data))
-            txt_logger.info(algo.latent_z)
+                txt_logger.info(algo.latent_z)
+
+            else:
+                data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"]]
+                txt_logger.info(
+                "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}"
+                .format(*data))
+ 
+
+
             header += ["return_" + key for key in return_per_episode.keys()]
             data += return_per_episode.values()
 
