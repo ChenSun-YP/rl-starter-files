@@ -54,6 +54,8 @@ python -m scripts.train --algo ppo --env  MiniGrid-BlendCrossDoorkey-v0 --model 
 python -m scripts.train --algo ppo --env  MiniGrid-BlendCrossDoorkey-v0 --model Blend1swap --save-interval 10 --frames 80000
 python -m scripts.train --algo ppo2 --env  MiniGrid-BlendCrossDoorkey-v0 --model Blend1swap --save-interval 10 --frames 80000
 
+python -m scripts.train_mult --algo ppo --env MiniGrid-BlendCrossDoorkey-v0 --model t800blendpposeed --save-interval 10 --frames 100000 --num-models 1
+
 ```
 
 <p align="center"><img src="README-rsrc/train-terminal-logs.png"></p>
