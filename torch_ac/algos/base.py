@@ -144,8 +144,30 @@ class BaseAlgo(ABC):
             
             obs, reward, terminated, truncated, _ = self.env.step(action.cpu().numpy())
             done = tuple(a | b for a, b in zip(terminated, truncated))
+            # if total frame is 3000, do a envswap
+            # if self.num_frames == 30:
+            #     #swap all envs  at the same time
+            #     print('swapping')
+            #     obs = self.env.swap_env(obs)
+            #     print('swapping env' ,self.env.current_env.__class__.__name__)
+            #     # Update experiences values
+            #     self.obss[i] = self.obs
 
+            # for proc_id in range(self.num_procs):
+            #     if self.should_swap(proc_id):  # Implement this method to determine when to swap
+            #         self.env.swap_env(proc_id)
+            for i in range(len(self.env.locals) + 1):
+                if 1==1:  # Replace with your specific condition
+                    # Assuming each local environment is a BlendedEnv instance
+                    # Trigger the swap
+                    print('Attempting to swap environment:', i)
+                    self.env.swap_envs(i,obs[i])
+
+                # print('swapping from', self.env.current_env.__class__.__name__)
+                # obs = self.env[i].swap_env(obs)
+                # print('swapping env' ,self.env[i].current_env.__class__.__name__)
             # Update experiences values 
+            
 
             self.obss[i] = self.obs
             self.obs = obs

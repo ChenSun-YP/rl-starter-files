@@ -15,7 +15,11 @@ def worker(conn, env):
         elif cmd == "reset":
             obs, _ = env.reset()
             conn.send(obs)
+        elif cmd == "swap":# not used
+            obs = env.swap_env(data)
+            conn.send(obs)
         else:
+            print("Invalid command: {}".format(cmd))
             raise NotImplementedError
 
 class ParallelEnv(gym.Env):
@@ -54,3 +58,74 @@ class ParallelEnv(gym.Env):
 
     def render(self):
         raise NotImplementedError
+
+
+    # def swap_env(self, env_index, new_env):
+    #     """
+    #     not used
+    #     Swaps out the environment at the specified index with a new environment.
+
+    #     Parameters:
+    #     env_index : int
+    #         The index of the environment to swap.
+    #     new_env : gym.Env
+    #         The new environment to use.
+    #     """
+    #     # Check if it's the first environment, which is not in a separate process
+    #     if env_index == 0:
+    #         self.envs[0].close()  # Close the current environment
+    #         self.envs[0] = new_env  # Assign the new environment
+    #     else:
+    #         # For other environments, which are in separate processes
+    #         self.locals[env_index - 1].send(("close", None))  # Send close command to the process
+    #         self.locals[env_index - 1].close()  # Close the local connection
+
+    #         # Start a new process with the new environment
+    #         local, remote = multiprocessing.Pipe()
+    #         self.locals[env_index - 1] = local
+    #         p = multiprocessing.Process(target=worker, args=(remote, new_env))
+    #         p.daemon = True
+    #         p.start()
+    #         remote.close()
+    # def swap_envs(self, env_index):
+    #     """
+    #     Sends a command to swap the environment in a specific subprocess.
+
+    #     Parameters:
+    #     env_index : int
+    #         The index of the environment to swap.
+    #     """
+    #     if env_index == 0:
+    #         #get obs
+    #         obs = self.envs[0].reset()
+    #         # Directly swap the environment in the main process
+    #         self.envs[0].swap_env(obs)
+    #     else:
+    #         #get obs
+    #         obs = self.envs[0].reset()
+    #         # Send swap command to the subprocess
+    #         self.locals[env_index - 1].send(("swap", None))
+    #         # Receive confirmation (e.g., the new observation after swapping)
+    #         new_obs = self.locals[env_index - 1].recv()
+    #         return new_obs
+
+
+    def swap_envs(self, env_index,current_obs):
+        """
+        Swaps the environment at the specified index by providing the current observation.
+
+        Parameters:
+        env_index : int
+            The index of the environment to swap.
+        """
+        if env_index == 0:
+            # Fetch the current observation and swap for the first environment
+            new_obs = self.envs[0].swap_env(current_obs)
+        else:
+            # For other environments, get the current observation from the subprocess
+
+            # Send swap command with the current observation
+            self.locals[env_index - 1].send(("swap", current_obs))
+            new_obs = self.locals[env_index - 1].recv()
+
+        return new_obs

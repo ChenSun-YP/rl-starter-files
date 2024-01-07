@@ -76,6 +76,8 @@ parser.add_argument("--interval", type=int, default=1000,
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    env_swap = 0
+
 
     args.mem = args.recurrence > 1
     for model_idx in range(args.num_models):
@@ -216,6 +218,7 @@ if __name__ == "__main__":
         start_time = time.time()
 
         while num_frames < args.frames:
+            print("num_frames: ",num_frames)
             # Update model parameters
             update_start_time = time.time()
 
@@ -223,9 +226,12 @@ if __name__ == "__main__":
             if args.env == 'MiniGrid-BlendCrossDoorkey-v0':
                 if num_frames % args.interval == 0:
                     # swap env and maintain agent positon
-
-                    envs[0].swap_active_env()
+                    #get current observation
+                    obs = envs[0].get_obs()
+                    envs[0].swap_env(obs)
                     print(envs[0].get_env_name())
+                    env_swap = 1
+
 
 
             if args.algo == "ppo2":
@@ -268,7 +274,9 @@ if __name__ == "__main__":
                     txt_logger.info(
                     "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}"
                     .format(*data))
-    
+                tb_writer.add_scalar('env_swap', env_swap, num_frames)
+                env_swap = 0
+
 
 
                 header += ["return_" + key for key in return_per_episode.keys()]
