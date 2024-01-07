@@ -58,7 +58,8 @@ class BlendedEnv(MiniGridEnv):
                 "mission":  self.current_env.observation_space["mission"]
             }
         )
-
+    def get_obs(self):
+        return self.current_env.gen_obs() 
 
     def step(self, action):
         # Perform the step in the current environment
@@ -90,6 +91,8 @@ class BlendedEnv(MiniGridEnv):
     def swap_env(self, obs):
         old = self.current_env.ground_truth_z
         # Get the current agent position from the observation's image
+        print(f"Before swap: Current environment is {self.get_env_name()}")
+
         agent_identifier = [1, 0, 0]
         agent_positions = np.argwhere(np.all(obs['image'] == agent_identifier, axis=-1))
 
@@ -114,29 +117,29 @@ class BlendedEnv(MiniGridEnv):
         new_obs = self.current_env.gen_obs()
         #print the old env latent z and updated one to check if it is updated
         # print(old,'switched to',self.current_env.ground_truth_z) todo why is this poping mulitple times?
+
+        print(f"After swap: Current environment is {self.get_env_name()}")
+
         return new_obs
     def swap_active_env(self):
         # Switch the environment
         self.current_env_idx = 1 - self.current_env_idx
         self.current_env = self.envs[self.current_env_idx]
-        # check the agent is in the right position
-        # Get the current agent position from the observation's image
-        # agent_identifier = [1, 0, 0]
-        # agent_positions = np.argwhere(np.all(self.current_obs['image'] == agent_identifier, axis=-1))
-        # # check if its a valid position
-        # if agent_positions.shape[0] > 0:
-        #     agent_pos = agent_positions[0]
-        # else:
-        #     agent_pos = [0, 0]
-        # # Adjust agent_pos to be within the new environment's valid navigable area
-        # agent_pos[0] = min(max(agent_pos[0], 1), self.current_env.width - 2)
-        # agent_pos[1] = min(max(agent_pos[1], 1), self.current_env.height - 2)
-        # # Reset the new environment and place the agent in the same position
-        # self.current_env.reset()
-        # self.current_env.agent_pos = agent_pos
-        # self.current_env.agent_dir = self.current_obs['direction']
-        # # Regenerate the observation after changing the agent's position and direction
-        # new_obs = self.current_env.gen_obs()
+        agent_identifier = [1, 0, 0]
+        agent_positions = np.argwhere(np.all(self.current_obs['image'] == agent_identifier, axis=-1))
+        # check if its a valid position
+        if agent_positions.shape[0] > 0:
+            agent_pos = agent_positions[0]
+        else:
+            agent_pos = [0, 0]
+        # Adjust agent_pos to be within the new environment's valid navigable area
+        agent_pos[0] = min(max(agent_pos[0], 1), self.current_env.width - 2)
+        agent_pos[1] = min(max(agent_pos[1], 1), self.current_env.height - 2)
+        # Reset the new environment and place the agent in the same position
+        self.current_env.reset()
+        self.current_env.agent_pos = agent_pos
+        self.current_env.agent_dir = self.current_obs['direction']
+        
         
 
 
