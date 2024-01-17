@@ -97,6 +97,8 @@ class WorldObj:
             v = Goal()
         elif obj_type == "lava":
             v = Lava()
+        elif obj_type == "good_lava":
+            v = Good_lava()
         else:
             assert False, "unknown object type in decode '%s'" % obj_type
 
@@ -138,6 +140,29 @@ class Floor(WorldObj):
 class Lava(WorldObj):
     def __init__(self):
         super().__init__("lava", "red")
+
+    def can_overlap(self):
+        return True
+
+    def render(self, img):
+        c = (255, 128, 0)
+
+        # Background color
+        fill_coords(img, point_in_rect(0, 1, 0, 1), c)
+
+        # Little waves
+        for i in range(3):
+            ylo = 0.3 + 0.2 * i
+            yhi = 0.4 + 0.2 * i
+            fill_coords(img, point_in_line(0.1, ylo, 0.3, yhi, r=0.03), (0, 0, 0))
+            fill_coords(img, point_in_line(0.3, yhi, 0.5, ylo, r=0.03), (0, 0, 0))
+            fill_coords(img, point_in_line(0.5, ylo, 0.7, yhi, r=0.03), (0, 0, 0))
+            fill_coords(img, point_in_line(0.7, yhi, 0.9, ylo, r=0.03), (0, 0, 0))
+
+
+class Good_lava(WorldObj):
+    def __init__(self):
+        super().__init__("good_lava", "red")
 
     def can_overlap(self):
         return True
