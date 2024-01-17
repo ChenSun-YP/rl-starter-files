@@ -34,6 +34,7 @@ OBJECT_TO_IDX = {
     "goal": 8,
     "lava": 9,
     "agent": 10,
+    "good_lava": 11,
 }
 
 IDX_TO_OBJECT = dict(zip(OBJECT_TO_IDX.values(), OBJECT_TO_IDX.keys()))
