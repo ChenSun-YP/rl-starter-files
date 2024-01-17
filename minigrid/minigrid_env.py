@@ -189,6 +189,7 @@ class MiniGridEnv(gym.Env):
             "box": "B",
             "goal": "G",
             "lava": "V",
+            "good_lava": "Z",
         }
 
         # Map agent's direction to short string
