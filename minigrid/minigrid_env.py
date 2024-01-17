@@ -546,6 +546,9 @@ class MiniGridEnv(gym.Env):
             if fwd_cell is not None and fwd_cell.type == "goal":
                 terminated = True
                 reward = self._reward()
+            if fwd_cell is not None and fwd_cell.type == "good_lava":
+                terminated = True
+                reward = self._reward()
             if fwd_cell is not None and fwd_cell.type == "lava":
                 terminated = True
 
