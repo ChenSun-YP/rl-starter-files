@@ -162,7 +162,7 @@ class Lava(WorldObj):
 
 class Good_lava(WorldObj):
     def __init__(self):
-        super().__init__("good_lava", "red")
+        super().__init__("good_lava", "green")
 
     def can_overlap(self):
         return True
