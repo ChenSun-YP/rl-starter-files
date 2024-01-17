@@ -30,7 +30,7 @@ class PPO2Algo(BaseAlgo):
         self.world_model = self.acmodel.world_model
         self.internal_model = self.acmodel.internal_model
         latent_dim = self.world_model.latent_dim
-        self.latent_z = torch.randn(latent_dim, requires_grad=True)
+        self.latent_z = torch.randn(latent_dim, requires_grad=True) # todo, this should not be here
 
         self.optimizer_world_model = torch.optim.Adam(self.world_model.parameters(), lr, eps=adam_eps)
         self.optimizer_internal_model = torch.optim.Adam(self.internal_model.parameters(), lr, eps=adam_eps)
@@ -300,9 +300,14 @@ class PPO2Algo(BaseAlgo):
                     return relative_change < threshold
 
 
-
+    def get_ground_truth_latent_z(self):
+        """
+        Returns the ground truth latent_z for the current environment.
+        """
+        return self.current_env.ground_truth_z
 
     def _get_batches_starting_indexes(self):
+
         """Gives, for each batch, the indexes of the observations given to
         the model and the experiences used to compute the loss at first.
 

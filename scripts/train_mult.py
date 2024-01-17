@@ -71,7 +71,7 @@ parser.add_argument("--context_size", type=int, default=4,
                     help="add a context latent z into the model")
 parser.add_argument("--num-models", type=int, default=5, 
                     help="number of models to train with different seeds (default: 1)")
-parser.add_argument("--interval", type=int, default=1000,
+parser.add_argument("--interval", type=int, default=999,
                     help="number of frames between swapping environments (default: 1000000)")
 
 if __name__ == "__main__":
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
         envs = []
         for i in range(args.procs):
-            envs.append(utils.make_env(args.env, args.seed + 10000 * i))
+            envs.append(utils.make_env(args.env, args.seed + 10000 * i,t=args.interval))
         txt_logger.info("Environments loaded\n")
 
 
@@ -223,19 +223,19 @@ if __name__ == "__main__":
             update_start_time = time.time()
 
             # inject current frame into env
-            if args.env == 'MiniGrid-BlendCrossDoorkey-v0':
-                if num_frames % args.interval == 0:
-                    # swap env and maintain agent positon
-                    #get current observation
-                    obs = envs[0].get_obs()
-                    envs[0].swap_env(obs)
-                    print(envs[0].get_env_name())
-                    env_swap = 1
+            # if args.env == 'MiniGrid-BlendCrossDoorkey-v0':
+            #     if num_frames % args.interval == 0:
+            #         # swap env and maintain agent positon
+            #         #get current observation
+            #         obs = envs[0].get_obs()
+            #         envs[0].swap_env(obs)
+            #         print(envs[0].get_env_name())
+            #         env_swap = 1
 
 
 
             if args.algo == "ppo2":
-                exps, logs1 = algo.collect_experiences(latent_z=algo.latent_z)
+                exps, logs1 = algo.collect_experiences(latent_z=algo.get_ground_truth_latent_z())
             else:
                 exps, logs1 = algo.collect_experiences()
             logs2 = algo.update_parameters(exps)
@@ -268,6 +268,7 @@ if __name__ == "__main__":
                     "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f}"
                     .format(*data))
                     txt_logger.info(algo.latent_z)
+                    
 
                 else:
                     data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"]]

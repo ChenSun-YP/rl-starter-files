@@ -39,9 +39,9 @@ utils.seed(args.seed)
 # Set device
 
 print(f"Device: {device}\n")
-checkpoint = utils.get_model_dir(args.model)
-checkpoint= torch.load('storage/B2/status.pt',map_location=device)
-print(checkpoint['model_state'].keys())
+# checkpoint = utils.get_model_dir(args.model)
+# checkpoint= torch.load('storage/B2/status.pt',map_location=device)
+# print(checkpoint['model_state'].keys())
 # Load environment
 
 env = utils.make_env(args.env, args.seed, render_mode="human")
