@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class BlendedEnv(MiniGridEnv):
     def __init__(
             self,
-            t=1000,
+            t=10,
             size=3,
             max_steps=None,
             agent_view_size: int = 7,
@@ -94,35 +94,32 @@ class BlendedEnv(MiniGridEnv):
 
             obs_before= self.current_obs
             #render the current env save as a image
-            self.current_env.render_mode = 'rgb_array'
-            x= self.render()
-            
+            # self.current_env.render_mode = 'rgb_array'
+            # x= self.render()
             # self.render_and_save(self.current_env,save_path='before.png')
-
-            
             obs = self.swap_env(obs)
-            
-        
-            self.current_env.render_mode = 'rgb_array'
+            self.render()
 
-            x1= self.render()
-            if  x.all() == x1.all():
-                print('equal render')
-            else:
-                print('inqueal')
+            # self.current_env.render_mode = 'rgb_array'
+
+            # x1= self.render()
+            # if  x.all() == x1.all():
+            #     print('equal render')
+            # else:
+            #     print('inqueal')
             #render the swapped env save as a image
             # self.render_and_save(self.current_env,save_path='after.png')
-            #stop and exit
+            # stop and exit
 
             # compare obs_before and obs to see if the latent z is updated
-            if obs_before['image'].all() == obs['image'].all():
-                print('obs not updated')
-            else:
-                print('obs updated')
+            # if obs_before['image'].all() == obs['image'].all():
+            #     print('obs not updated')
+            # else:
+            #     print('obs updated')
 
-            # Compare observation images
-            if not np.array_equal(obs_before['image'], obs['image']):
-                print('Image changed')
+            # # Compare observation images
+            # if not np.array_equal(obs_before['image'], obs['image']):
+            #     print('Image changed')
             
             # Compare ground_truth_z
             # if not np.array_equal(obs_before['ground_truth_z'], obs['ground_truth_z']):
@@ -156,20 +153,33 @@ class BlendedEnv(MiniGridEnv):
             agent_pos = [0, 0]  # Default value in case the agent's position isn't found
 
         # Switch the environment now there are three envs
-            
-        self.current_env_idx = (self.current_env_idx + 1) % 3
+        #random a env index
+        previous_env_idx = self.current_env_idx
+        self.current_env_idx = np.random.randint(0,len(self.envs))
         self.current_env = self.envs[self.current_env_idx]
-
+        
         # Adjust agent_pos to be within the new environment's valid navigable area
         agent_pos[0] = min(max(agent_pos[0], 1), self.current_env.width - 2)
         agent_pos[1] = min(max(agent_pos[1], 1), self.current_env.height - 2)
 
         # Reset the new environment and place the agent in the same position
         new_obs = self.current_env.reset()
+        self.envs[previous_env_idx].reset()
+        self.envs[previous_env_idx].render()
+
+
+
+    
+        # rerender the new env
+        #reset the previous env
+
         self.current_env.agent_pos = agent_pos
         self.current_env.agent_dir = obs['direction']  # Assuming the direction is the same
         # Regenerate the observation after changing the agent's position and direction
         new_obs = self.current_env.gen_obs()
+        
+        self.render()
+        
         #print the old env latent z and updated one to check if it is updated
         # print(old,'switched to',self.current_env.ground_truth_z) todo why is this poping mulitple times?
 

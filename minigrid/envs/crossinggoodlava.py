@@ -188,7 +188,7 @@ class CrossinggoodlavaEnv(MiniGridEnv):
             self.grid.set(i, j, None)
 
         self.mission = (
-            "avoid the lava and get to the green goal square"
+            "lava are good"
             if self.obstacle_type == Good_lava
-            else "find the opening and get to the green goal square"
+            else "lava are good"
         )
