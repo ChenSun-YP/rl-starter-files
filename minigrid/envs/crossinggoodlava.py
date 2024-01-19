@@ -113,7 +113,7 @@ class CrossinggoodlavaEnv(MiniGridEnv):
 
     @staticmethod
     def _gen_mission_lava():
-        return "avoid the lava and get to the green goal square"
+        return "lava are good"
 
     @staticmethod
     def _gen_mission():
