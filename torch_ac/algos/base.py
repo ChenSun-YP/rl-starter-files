@@ -129,6 +129,12 @@ class BaseAlgo(ABC):
         # self.prev_obss[0] = self.preprocess_obss(self.obs, device=self.device)
 
         for i in range(self.num_frames_per_proc):
+            # get ground truth latent z for current env
+            # find latent_z = self.env[i].current_env.latent_z where env is ParallelEnv(envs)
+
+            # where do i get the latent_z for every proc in current frame?? od i get i t all at once?
+            batch_latent_z = self.env.get_ground_truth_latent_z(self.num_procs)
+
             # Do one agent-environment interaction
             # Store the current observation before taking the action for the next step
             if i < self.num_frames_per_proc - 1:
@@ -137,9 +143,9 @@ class BaseAlgo(ABC):
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
             with torch.no_grad():
                 if self.acmodel.recurrent:
-                    dist, value, memory = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1),latent_z)
+                    dist, value, memory = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1),latent_z=batch_latent_z)
                 else:
-                    dist, value = self.acmodel(preprocessed_obs)
+                    dist, value = self.acmodel(preprocessed_obs,latent_z=latent_z)
             action = dist.sample()
             
             obs, reward, terminated, truncated, _ = self.env.step(action.cpu().numpy())
@@ -211,9 +217,9 @@ class BaseAlgo(ABC):
         preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
         with torch.no_grad():
             if self.acmodel.recurrent:
-                _, next_value, _ = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1),latent_z)
+                _, next_value, _ = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1),latent_z = batch_latent_z)
             else:
-                _, next_value = self.acmodel(preprocessed_obs)
+                _, next_value = self.acmodel(preprocessed_obs,latent_z = batch_latent_z)
 
         for i in reversed(range(self.num_frames_per_proc)):
             next_mask = self.masks[i+1] if i < self.num_frames_per_proc - 1 else self.mask

@@ -1,6 +1,6 @@
 import multiprocessing
 import gymnasium as gym
-
+import torch
 
 multiprocessing.set_start_method("fork")
 
@@ -18,6 +18,9 @@ def worker(conn, env):
         elif cmd == "swap":# not used
             obs = env.swap_env(data)
             conn.send(obs)
+        elif cmd == "get_ground_truth_latent_z":
+            z = env.get_ground_truth_latent_z()
+            conn.send(z)
         else:
             print("Invalid command: {}".format(cmd))
             raise NotImplementedError
@@ -47,14 +50,24 @@ class ParallelEnv(gym.Env):
         results = [self.envs[0].reset()[0]] + [local.recv() for local in self.locals]
         return results
 
-    def step(self, actions):
-        for local, action in zip(self.locals, actions[1:]):
-            local.send(("step", action))
-        obs, reward, terminated, truncated, info = self.envs[0].step(actions[0])
-        if terminated or truncated:
-            obs, _ = self.envs[0].reset()
-        results = zip(*[(obs, reward, terminated, truncated, info)] + [local.recv() for local in self.locals])
-        return results
+    def step(self, actions,latenszs=None):
+        if latenszs is not None:
+            for local, action in zip(self.locals, actions[1:]):
+                local.send(("step", action))
+            obs, reward, terminated, truncated, info = self.envs[0].step(actions[0])
+            if terminated or truncated:
+                obs, _ = self.envs[0].reset()
+            results = zip(*[(obs, reward, terminated, truncated, info)] + [local.recv() for local in self.locals])
+            return results
+        else:
+            for local, action in zip(self.locals, actions[1:]):
+                local.send(("step", action))
+            obs, reward, terminated, truncated, info = self.envs[0].step(actions[0])
+            if terminated or truncated:
+                obs, _ = self.envs[0].reset()
+            results = zip(*[(obs, reward, terminated, truncated, info)] + [local.recv() for local in self.locals])
+            return results
+
 
     def render(self):
         raise NotImplementedError
@@ -109,7 +122,25 @@ class ParallelEnv(gym.Env):
     #         new_obs = self.locals[env_index - 1].recv()
     #         return new_obs
 
+    def get_ground_truth_latent_z(self,num_proc):
+        """
+        Sends a command to get the ground truth latent z in a specific subprocess.
 
+        Parameters:
+        env_index : int
+            The index of the environment to swap.
+        """
+        latent_zs = []
+        # the first one is the main process
+        latent_zs.append(self.envs[0].get_ground_truth_latent_z())
+        for i in range(num_proc-1):
+            self.locals[i].send(("get_ground_truth_latent_z", None))
+            latent_zs.append(self.locals[i].recv())
+        latent_zs = torch.stack(latent_zs)
+
+
+
+        return latent_zs
     def swap_envs(self, env_index,current_obs):
         """
         Swaps the environment at the specified index by providing the current observation.
