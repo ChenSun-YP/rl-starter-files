@@ -34,7 +34,7 @@ class PPO2Algo(BaseAlgo):
 
         self.optimizer_world_model = torch.optim.Adam(self.world_model.parameters(), lr, eps=adam_eps)
         self.optimizer_internal_model = torch.optim.Adam(self.internal_model.parameters(), lr, eps=adam_eps)
-        self.optimizer_laten_z= torch.optim.Adam([self.latent_z], lr, eps=adam_eps)
+        # self.optimizer_laten_z= torch.optim.Adam([self.latent_z], lr, eps=adam_eps)
         #random disribution of latent Z
 
                 
@@ -73,28 +73,40 @@ class PPO2Algo(BaseAlgo):
 
                 if self.acmodel.recurrent:
                     memory = exps.memory[inds]
+                # print('inds',inds.shape[0])
+                self.latent_z = self.env.get_ground_truth_latent_z(self.num_procs)
+                latent_zs = self.latent_z
+                #expend latent_zs to match the size of actor_embedding
+                # while size of latent_zs < size of inds.shape[0]
+                #     latent_zs = latent_zs.repeat(2,1)
+                while latent_zs.size(0) < inds.shape[0]:
+                    # add one more  self.latent_z tp latent_zs
+                    latent_zs = torch.cat((latent_zs,self.latent_z),0)
+                # Resize latent_zs to match the size of actor_embedding
 
+                # Concatenate actor_embedding and latent_zs
                 for i in range(self.recurrence):
                     # Create a sub-batch of experience
-                    latent_z_history.append(self.latent_z.clone())
 
                     sb = exps[inds + i]
 
                     # Compute loss
                     #print out all the parameters in obs and tell if it contains the latent Z
                     if self.acmodel.recurrent:
-                        dist, value, memory = self.acmodel(sb.obs, memory * sb.mask,self.latent_z)
+                        dist, value, memory = self.acmodel(sb.obs, memory * sb.mask,latent_z = latent_zs)
                     else:
-                        dist, value = self.acmodel(sb.obs)
+                        dist, value = self.acmodel(sb.obs,latent_z = latent_zs)
 
                     # Compute and update world model here using sb.obs and sb.next_obs
-                    world_loss = self.update_world_model(sb.prev_obs, sb.obs)  # Assuming sb.next_obs is the ground truth next state
-                    # interal_loss is updated via pervious latent_z,pervious obs and current latent_z
-                    #if there is no latent z histroy, then we use the current latent z and if there is no latent z, we use the random latent z
-                    if len(latent_z_history) == 1: # 
-                        internal_loss = self.update_internal_model(sb.prev_obs,self.latent_z)
-                    else:
-                        internal_loss = self.update_internal_model(sb.prev_obs,latent_z_history[-2])  # Update internal model and latent Z
+                    ### todo: update the world model
+                    # world_loss = self.update_world_model(sb.prev_obs, sb.obs)  # Assuming sb.next_obs is the ground truth next state
+                    # if latent_z_history == []:
+                    #     print('latent_z_history is empty')
+                    # elif len(latent_z_history) == 1: # 
+                    #     internal_loss = self.update_internal_model(sb.prev_obs,self.latent_z)
+                    # else:
+                    #     internal_loss = self.update_internal_model(sb.prev_obs,latent_z_history[-2]) 
+                        
                     entropy = dist.entropy().mean()
 
                     ratio = torch.exp(dist.log_prob(sb.action) - sb.log_prob)
@@ -115,8 +127,8 @@ class PPO2Algo(BaseAlgo):
                     batch_policy_loss += policy_loss.item()
                     batch_value_loss += value_loss.item()
                     batch_loss += loss
-                    batch_world_loss = world_loss.item()
-                    batch_internal_loss = internal_loss.item()
+                    # batch_world_loss = world_loss.item()
+                    # batch_internal_loss = internal_loss.item()
 
                     # Update memories for next epoch
 
@@ -146,8 +158,8 @@ class PPO2Algo(BaseAlgo):
                 batch_value /= self.recurrence
                 batch_policy_loss /= self.recurrence
                 batch_value_loss /= self.recurrence
-                batch_loss /= self.recurrence
-                batch_world_loss /= self.recurrence
+                # batch_loss /= self.recurrence
+                # batch_world_loss /= self.recurrence
                 batch_internal_loss /= self.recurrence
 
                 # Update actor-critic
@@ -267,9 +279,9 @@ class PPO2Algo(BaseAlgo):
             total_loss = policy_loss + value_loss
 
             # Perform backpropagation and update latent_z
-            self.optimizer_laten_z.zero_grad()
+            # self.optimizer_laten_z.zero_grad()
             total_loss.backward()
-            self.optimizer_laten_z.step()
+            # self.optimizer_laten_z.step()
 
             losses.append(total_loss.item())
 
@@ -304,7 +316,7 @@ class PPO2Algo(BaseAlgo):
         """
         Returns the ground truth latent_z for the current environment.
         """
-        return self.current_env.ground_truth_z
+        return self.env.current_env.ground_truth_z
 
     def _get_batches_starting_indexes(self):
 
