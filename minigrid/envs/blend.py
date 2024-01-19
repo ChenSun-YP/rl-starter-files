@@ -12,21 +12,24 @@ import logging
 from gymnasium import spaces
 from gymnasium.core import ActType, ObsType
 logger = logging.getLogger(__name__)
+import torch
 class BlendedEnv(MiniGridEnv):
     def __init__(
             self,
-            t=10,
+            t=15,
             size=3,
             max_steps=None,
             agent_view_size: int = 7,
             ground_truth_task=True, # the ground truth task is the task that the agent is trained on
-
+            swap_seq = [0,1,2,3], # the sequence of the envs that the agent will be trained on
             **kwargs):
         # global blended_instance
         # blended_instance = self
         # Create a list of environments
         print('init blended env with t', t)
         self.agent_view_size= 5
+        self.swap_sqeuence = swap_seq
+        self.swap_seq_idx = 0 
         self.envs = [
             DoorKeyEnv(size=5, max_steps=max_steps, **kwargs),
             CrossingEnv(size=5, max_steps=max_steps, **kwargs),
@@ -37,10 +40,14 @@ class BlendedEnv(MiniGridEnv):
         ]
         if ground_truth_task is True:
             #init the ground latent z for two subenvs with a 1*4 shape tensor
-            self.envs[0].ground_truth_z = np.array([[1, 0.25, 0.25, 0.25]])
-            self.envs[1].ground_truth_z = np.array([[0.25, 0.25, 0.25, 1]])
-            self.envs[2].ground_truth_z = np.array([[0.25, 1, 0.25, 0.25]])
-            self.envs[3].ground_truth_z = np.array([[0.25, 0.25, 1, 0.25]])
+            # self.envs[0].ground_truth_z = np.array([[1, 0.25, 0.25, 0.25]])
+            # self.envs[1].ground_truth_z = np.array([[0.25, 0.25, 0.25, 1]])
+            # self.envs[2].ground_truth_z = np.array([[0.25, 1, 0.25, 0.25]])
+            # self.envs[3].ground_truth_z = np.array([[0.25, 0.25, 1, 0.25]])
+            self.envs[0].ground_truth_z = torch.tensor([1, 0.25, 0.25, 0.25])
+            self.envs[1].ground_truth_z = torch.tensor([0.25, 0.25, 0.25, 1])
+            self.envs[2].ground_truth_z = torch.tensor([0.25, 1, 0.25, 0.25])
+            self.envs[3].ground_truth_z = torch.tensor([0.25, 0.25, 1, 0.25])
 
 
 
@@ -90,15 +97,16 @@ class BlendedEnv(MiniGridEnv):
         #fetch the current frame from the current env
 
         if self.step_count % self.t == 0:
-            print('swap happen in blend.py on step', self.step_count, 'current env obj is ', self.current_env)
+            print('swap happen in blend.py on step', self.step_count)
 
-            obs_before= self.current_obs
             #render the current env save as a image
             # self.current_env.render_mode = 'rgb_array'
             # x= self.render()
             # self.render_and_save(self.current_env,save_path='before.png')
-            obs = self.swap_env(obs)
-            self.render()
+            next_env_idx = self.swap_sqeuence[self.swap_seq_idx] % len(self.envs)
+            self.swap_seq_idx += 1
+            obs = self.swap_env(obs,next_env_idx)
+            # self.render() 
 
             # self.current_env.render_mode = 'rgb_array'
 
@@ -137,13 +145,13 @@ class BlendedEnv(MiniGridEnv):
         # tasks = [env.__class__.__name__ for env in self.envs]
         # current_task = self.current_env.__class__.__name__
         return obs, reward, done, truncated, info
-    def swap_env(self, obs):
+    def swap_env(self, obs,next_env_idx):
         # gen a unique swap id +current actual timestamp for logging purpose for everytime this is invoked with same seed
         swap_id = str(self.current_env_idx) + str(self.step_count) + str(datetime.datetime.now())
 
         # old = self.current_env.ground_truth_z
         # Get the current agent position from the observation's image
-        print(f"Before swap: Current environment is {self.get_env_name(),swap_id}")
+        before =self.get_env_name()
         agent_identifier = [1, 0, 0]
         agent_positions = np.argwhere(np.all(obs['image'] == agent_identifier, axis=-1))
 
@@ -154,8 +162,9 @@ class BlendedEnv(MiniGridEnv):
 
         # Switch the environment now there are three envs
         #random a env index
-        previous_env_idx = self.current_env_idx
-        self.current_env_idx = np.random.randint(0,len(self.envs))
+        # self.current_env_idx = np.random.randint(0,len(self.envs))
+        # self.current_env = self.envs[self.current_env_idx]
+        self.current_env_idx = next_env_idx
         self.current_env = self.envs[self.current_env_idx]
         
         # Adjust agent_pos to be within the new environment's valid navigable area
@@ -164,8 +173,8 @@ class BlendedEnv(MiniGridEnv):
 
         # Reset the new environment and place the agent in the same position
         new_obs = self.current_env.reset()
-        self.envs[previous_env_idx].reset()
-        self.envs[previous_env_idx].render()
+        # self.envs[previous_env_idx].reset()
+        # self.envs[previous_env_idx].render()
 
 
 
@@ -178,12 +187,12 @@ class BlendedEnv(MiniGridEnv):
         # Regenerate the observation after changing the agent's position and direction
         new_obs = self.current_env.gen_obs()
         
-        self.render()
+        # self.render() 
         
         #print the old env latent z and updated one to check if it is updated
         # print(old,'switched to',self.current_env.ground_truth_z) todo why is this poping mulitple times?
 
-        print(f"After swap: Current environment is {self.get_env_name(),swap_id}")
+        print(f" swap {before ,self.get_env_name(),swap_id}")
 
         return new_obs
     # def swap_active_env(self):
@@ -242,6 +251,7 @@ class BlendedEnv(MiniGridEnv):
     def _gen_mission(self):
         return self.current_env._gen_mission()
     def get_env_name(self):
+        return self.current_env.__class__.__name__
         if self.current_env_idx == None:
             return "no"
         if self.current_env_idx == 0:
@@ -252,5 +262,6 @@ class BlendedEnv(MiniGridEnv):
             return "dynamicobstacles"
         else:
             return "no"
-        
+    def get_ground_truth_latent_z(self):
+        return self.current_env.ground_truth_z
         
