@@ -115,6 +115,11 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         return self.image_embedding_size
 
     def forward(self, obs, memory,latent_z=None):
+        # also add the latent from env/agent to the input
+        if latent_z is None:
+            print('latent_z is None, this is not allowed')
+            #pop error and stop
+
         x = obs.image.transpose(1, 3).transpose(2, 3)
         x = self.image_conv(x)
         x = x.reshape(x.shape[0], -1)
@@ -130,13 +135,16 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         if self.use_text:
             embed_text = self._get_embed_text(obs.text)
             embedding = torch.cat((embedding, embed_text), dim=1)
-        latent_z = torch.randn(4, requires_grad=True)  # todo, this hard code the latent z
+        # latent_z = torch.randn(4, requires_grad=True)  # todo, this hard code the latent z
         batch_size, _ = x.shape
         # print(embedding.shape) #torch.Size([16, 64])
-        latent_z_batched = latent_z.unsqueeze(0).repeat(embedding.size(0), 1)
+        # latent_z_batched = latent_z.unsqueeze(0).repeat(embedding.size(0), 1)
+        latent_z_batched = latent_z
         # embedding = torch.cat((embedding,latent_z_batched), dim=1)
         actor_embedding = self.actor_fc1(embedding)
         critic_embedding = self.critic_fc1(embedding)
+        # print('actor_embedding',actor_embedding.shape)
+        # print('latent_z_batched',latent_z_batched.shape)
         actor_combined = torch.cat((actor_embedding, latent_z_batched), dim=1)
         critic_combined = torch.cat((critic_embedding, latent_z_batched), dim=1)
 
