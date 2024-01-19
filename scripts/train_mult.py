@@ -4,6 +4,8 @@ import time
 import datetime
 import torch_ac
 import tensorboardX
+from torch.utils.tensorboard import SummaryWriter
+import tensorflow as tf
 import sys
 
 import utils
@@ -16,6 +18,7 @@ from ali import AgentNetwork
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
+import numpy as np
 # Parse arguments
 
 parser = argparse.ArgumentParser()
@@ -79,7 +82,10 @@ if __name__ == "__main__":
     env_swap = 0
 
 
+
     args.mem = args.recurrence > 1
+    swap_seq = np.random.randint(0,100,size=int(args.frames/args.interval))
+
     for model_idx in range(args.num_models):
         # Adjust seed for each model
         current_seed = args.seed + model_idx
@@ -112,8 +118,10 @@ if __name__ == "__main__":
         # Load environments
 
         envs = []
+        #generate a random swap sequence of length frame /args.interval
+        print(swap_seq)
         for i in range(args.procs):
-            envs.append(utils.make_env(args.env, args.seed + 10000 * i,t=args.interval))
+            envs.append(utils.make_env(args.env, args.seed + 10000 * i,t=args.interval,swap_seq=swap_seq))
         txt_logger.info("Environments loaded\n")
 
 
@@ -235,7 +243,7 @@ if __name__ == "__main__":
 
 
             if args.algo == "ppo2":
-                exps, logs1 = algo.collect_experiences(latent_z=algo.get_ground_truth_latent_z())
+                exps, logs1 = algo.collect_experiences()
             else:
                 exps, logs1 = algo.collect_experiences()
             logs2 = algo.update_parameters(exps)
@@ -267,7 +275,7 @@ if __name__ == "__main__":
                     txt_logger.info(
                     "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f}"
                     .format(*data))
-                    txt_logger.info(algo.latent_z)
+                    # txt_logger.info(algo.latent_z)
                     
 
                 else:
@@ -300,6 +308,24 @@ if __name__ == "__main__":
                     status["vocab"] = preprocess_obss.vocab.vocab
                 utils.save_status(status, model_dir)
                 txt_logger.info("Status saved")
+        swap_id = 0
+        env_names = ["doorkey", "cross", "obstacle", "goodlava"]
+        env_colors = {"doorkey": "red", "cross": "blue", "obstacle": "green", "goodlava": "yellow"}  # Example colors for each environment        swap_seq_data=[]
+
+        for i in range(args.frames):
+            # swap at every interval *16 frames
+
+            if i % (args.interval * 16) == 0:
+                swap_id = swap_id + 1
+                
+            env_name = env_names[swap_seq[swap_id] % 4]
+            # print("num_frames:", i, "env:", env_name)
+
+            env_id = env_names.index(env_name)
+            tb_writer.add_scalar('Environment', env_id, i)
+
+
+            
 
         # plt.plot(logs["return_per_episode"])
         # plt.xlabel("Episode")
