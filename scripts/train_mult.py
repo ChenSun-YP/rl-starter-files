@@ -19,6 +19,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import numpy as np
+import pandas as pd
+import os
+from array2gif import write_gif
 # Parse arguments
 
 parser = argparse.ArgumentParser()
@@ -76,7 +79,8 @@ parser.add_argument("--num-models", type=int, default=5,
                     help="number of models to train with different seeds (default: 1)")
 parser.add_argument("--interval", type=int, default=999,
                     help="number of frames between swapping environments (default: 1000000)")
-
+parser.add_argument("--gif", type=str, default=None,
+                    help="store output as gif with the given filename")
 if __name__ == "__main__":
     args = parser.parse_args()
     env_swap = 0
@@ -85,6 +89,9 @@ if __name__ == "__main__":
 
     args.mem = args.recurrence > 1
     swap_seq = np.random.randint(0,100,size=int(args.frames/args.interval))
+    # make swap a fixed random sequence like [0,1,2,3,0,1,2,3,0,1,2,3] with lenghth of arfs.frames/args.interval, everyrun shoudl have the same swap sequence
+    # swap_seq = [0,1,2,3,0,1,2,3,0,1,2,3]
+    swap_seq = [37, 86, 30, 50, 20, 83, 60, 52, 75, 75, 27, 28, 91, 38, 15, 36, 43, 50, 97, 80, 14, 36, 62, 89, 40, 78, 89, 23, 50, 54, 3, 85, 0, 56, 5, 35, 16, 28, 21, 81, 94, 69, 86, 21, 94, 21, 78, 64, 60, 43, 65, 43, 25, 18, 37, 20, 81, 89, 89, 37, 13, 58, 44, 4, 83, 29, 19, 65, 18, 74, 96, 55, 60, 10, 54, 62, 59, 6, 59, 99, 60, 85, 81, 43, 58, 94, 60, 8, 70, 64, 42, 2, 98, 53, 2, 62, 11, 40, 58, 40, 4, 32, 26, 40, 78, 43, 17, 42, 71, 28, 77, 48, 98, 20, 93, 85, 95, 0, 9, 11, 21, 17, 20, 91, 51, 15, 96, 76, 3, 82, 62, 47, 25, 73, 36, 7, 96, 96, 51, 0, 9, 63, 97, 28, 56, 80, 51, 56, 58, 4, 91, 66, 56, 53, 30, 99, 79, 60, 57, 6, 95, 79, 54, 42, 2, 37, 67, 91, 47, 15, 29, 64, 12, 11, 77, 73, 51, 40, 79, 82, 42, 37, 71, 85, 0, 29, 65, 12, 78, 73, 31, 77, 12, 86, 96, 44, 49, 97, 25, 4]
 
     for model_idx in range(args.num_models):
         # Adjust seed for each model
@@ -324,6 +331,42 @@ if __name__ == "__main__":
             env_id = env_names.index(env_name)
             tb_writer.add_scalar('Environment', env_id, i)
 
+# import matplotlib.pyplot as plt
+# # Top Plot: Environment Indication
+# env_names = ["doorkey", "cross", "obstacle", "goodlava"]
+# env_colors = {"doorkey": "red", "cross": "blue", "obstacle": "green", "goodlava": "yellow"}
+
+# env_indicator = []
+# for i in range(args.frames):
+#     swap_id = i // (args.interval * 16)
+#     env_name = env_names[swap_seq[swap_id] % 4]
+#     env_indicator.append(env_colors[env_name])
+
+# plt.subplot(2, 1, 1)
+# plt.bar(range(args.frames), [1] * args.frames, color=env_indicator)
+# plt.xlabel("Frame")
+# plt.ylabel("Environment")
+# plt.title("Environment Indication")
+
+# # Bottom Plot: Rreturn
+# df = pd.read_csv(os.path.join(model_dir, "log.csv"))
+# rreturn = df['rreturn_mean']
+
+# plt.subplot(2, 1, 2)
+# plt.plot(range(len(rreturn)), rreturn, color='black')
+
+# # Color every point based on its color from the last plot
+# for i in range(len(rreturn)):
+#     plt.scatter(i, rreturn[i], color=env_indicator[i])
+
+# plt.xlabel("Update")
+# plt.ylabel("Rreturn")
+# plt.title("Rreturn")
+
+
+# # Display the plots
+# plt.tight_layout()
+# plt.show()
 
             
 
