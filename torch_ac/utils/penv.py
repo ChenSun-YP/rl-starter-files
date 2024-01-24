@@ -139,8 +139,28 @@ class ParallelEnv(gym.Env):
         latent_zs = torch.stack(latent_zs)
 
 
+    # def get_fix_latent_z(self,num_proc):
+    #     """
+    #     Sends a command to get the ground truth latent z in a specific subprocess.
 
-        return latent_zs
+    #     Parameters:
+    #     env_index : int
+    #         The index of the environment to swap.
+    #     """
+    #     latent_zs = []
+    #     for _ in range(num_proc):
+    #         latent_zs.append(torch.tensor([1, 0.25, 0.25, 0.25])
+    #     latent_zs = torch.stack(latent_zs)
+
+    #     return latent_zs
+    def get_main_env(self):
+
+        # the first one is the main process
+        return self.envs[0]
+
+
+
+
     def swap_envs(self, env_index,current_obs):
         """
         Swaps the environment at the specified index by providing the current observation.
