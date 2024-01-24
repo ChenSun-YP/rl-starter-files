@@ -47,7 +47,7 @@ class DynamicObstaclesEnv(MiniGridEnv):
 
     ## Rewards
 
-    A reward of '1 - 0.9 * (step_count / max_steps)' is given for success, and '0' for failure. A '-1' penalty is
+    A reward of '1 - 0.9 * (step_count / max_steps)' is given for success, and '0' for failure. A '-0.05' penalty is
     subtracted if the agent collides with an obstacle.
 
     ## Termination
@@ -160,7 +160,7 @@ class DynamicObstaclesEnv(MiniGridEnv):
 
         # If the agent tried to walk over an obstacle or wall
         if action == self.actions.forward and not_clear:
-            reward = -1
+            reward = -0.05
             terminated = True
             return obs, reward, terminated, truncated, info
 

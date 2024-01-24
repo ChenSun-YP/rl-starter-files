@@ -666,7 +666,11 @@ class MiniGridEnv(gym.Env):
         Render a non-paratial observation for visualization
         """
         # Compute which cells are visible to the agent
-        _, vis_mask = self.gen_obs_grid()
+        if self.__class__.__name__ == "BlendedEnv":
+            _, vis_mask = self.current_env.gen_obs_grid()
+            self = self.current_env
+        else:
+            _, vis_mask = self.gen_obs_grid()
 
         # Compute the world coordinates of the bottom-left corner
         # of the agent's view area
