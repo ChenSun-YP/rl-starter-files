@@ -20,8 +20,10 @@ import pandas as pd
 import torch
 import numpy as np
 import pandas as pd
-import os
 from array2gif import write_gif
+
+import os
+import os
 # Parse arguments
 
 parser = argparse.ArgumentParser()
@@ -79,11 +81,18 @@ parser.add_argument("--num-models", type=int, default=5,
                     help="number of models to train with different seeds (default: 1)")
 parser.add_argument("--interval", type=int, default=999,
                     help="number of frames between swapping environments (default: 1000000)")
+
 parser.add_argument("--gif", type=str, default=None,
                     help="store output as gif with the given filename")
+parser.add_argument("--pause", type=float, default=0.1,
+                    help="pause duration between two consequent actions of the agent (default: 0.1)")
+parser.add_argument("--argmax", action="store_true", default=False,
+                    help="select the action with highest probability (default: False)")
+parser.add_argument("--memory", action="store_true", default=False,
+                    help="add a LSTM to the model")
+
 if __name__ == "__main__":
     args = parser.parse_args()
-    env_swap = 0
 
 
 
@@ -91,7 +100,7 @@ if __name__ == "__main__":
     swap_seq = np.random.randint(0,100,size=int(args.frames/args.interval))
     # make swap a fixed random sequence like [0,1,2,3,0,1,2,3,0,1,2,3] with lenghth of arfs.frames/args.interval, everyrun shoudl have the same swap sequence
     # swap_seq = [0,1,2,3,0,1,2,3,0,1,2,3]
-    swap_seq = [37, 86, 30, 50, 20, 83, 60, 52, 75, 75, 27, 28, 91, 38, 15, 36, 43, 50, 97, 80, 14, 36, 62, 89, 40, 78, 89, 23, 50, 54, 3, 85, 0, 56, 5, 35, 16, 28, 21, 81, 94, 69, 86, 21, 94, 21, 78, 64, 60, 43, 65, 43, 25, 18, 37, 20, 81, 89, 89, 37, 13, 58, 44, 4, 83, 29, 19, 65, 18, 74, 96, 55, 60, 10, 54, 62, 59, 6, 59, 99, 60, 85, 81, 43, 58, 94, 60, 8, 70, 64, 42, 2, 98, 53, 2, 62, 11, 40, 58, 40, 4, 32, 26, 40, 78, 43, 17, 42, 71, 28, 77, 48, 98, 20, 93, 85, 95, 0, 9, 11, 21, 17, 20, 91, 51, 15, 96, 76, 3, 82, 62, 47, 25, 73, 36, 7, 96, 96, 51, 0, 9, 63, 97, 28, 56, 80, 51, 56, 58, 4, 91, 66, 56, 53, 30, 99, 79, 60, 57, 6, 95, 79, 54, 42, 2, 37, 67, 91, 47, 15, 29, 64, 12, 11, 77, 73, 51, 40, 79, 82, 42, 37, 71, 85, 0, 29, 65, 12, 78, 73, 31, 77, 12, 86, 96, 44, 49, 97, 25, 4]
+    # swap_seq = [37, 86, 30, 50, 20, 83, 60, 52, 75, 75, 27, 28, 91, 38, 15, 36, 43, 50, 97, 80, 14, 36, 62, 89, 40, 78, 89, 23, 50, 54, 3, 85, 0, 56, 5, 35, 16, 28, 21, 81, 94, 69, 86, 21, 94, 21, 78, 64, 60, 43, 65, 43, 25, 18, 37, 20, 81, 89, 89, 37, 13, 58, 44, 4, 83, 29, 19, 65, 18, 74, 96, 55, 60, 10, 54, 62, 59, 6, 59, 99, 60, 85, 81, 43, 58, 94, 60, 8, 70, 64, 42, 2, 98, 53, 2, 62, 11, 40, 58, 40, 4, 32, 26, 40, 78, 43, 17, 42, 71, 28, 77, 48, 98, 20, 93, 85, 95, 0, 9, 11, 21, 17, 20, 91, 51, 15, 96, 76, 3, 82, 62, 47, 25, 73, 36, 7, 96, 96, 51, 0, 9, 63, 97, 28, 56, 80, 51, 56, 58, 4, 91, 66, 56, 53, 30, 99, 79, 60, 57, 6, 95, 79, 54, 42, 2, 37, 67, 91, 47, 15, 29, 64, 12, 11, 77, 73, 51, 40, 79, 82, 42, 37, 71, 85, 0, 29, 65, 12, 78, 73, 31, 77, 12, 86, 96, 44, 49, 97, 25, 4]
 
     for model_idx in range(args.num_models):
         # Adjust seed for each model
@@ -127,8 +136,12 @@ if __name__ == "__main__":
         envs = []
         #generate a random swap sequence of length frame /args.interval
         print(swap_seq)
-        for i in range(args.procs):
-            envs.append(utils.make_env(args.env, args.seed + 10000 * i,t=args.interval,swap_seq=swap_seq))
+        if args.env == 'MiniGrid-BlendCrossDoorkey-v0':
+            for i in range(args.procs):
+                envs.append(utils.make_env(args.env, args.seed + 10000 * i,t=args.interval,swap_seq=swap_seq))
+        else:
+            for i in range(args.procs):
+                envs.append(utils.make_env(args.env, args.seed + 10000 * i))
         txt_logger.info("Environments loaded\n")
 
 
@@ -248,11 +261,17 @@ if __name__ == "__main__":
             #         env_swap = 1
 
 
-
-            if args.algo == "ppo2":
-                exps, logs1 = algo.collect_experiences()
+            if args.env == 'MiniGrid-BlendCrossDoorkey-v0':
+                if args.algo == "ppo2":
+                    exps, logs1 = algo.collect_experiences_latent()
+                else:
+                    exps, logs1 = algo.collect_experiences()
             else:
-                exps, logs1 = algo.collect_experiences()
+                if args.algo == "ppo2":
+                    exps, logs1 = algo.collect_experiences_latent(latent_z=torch.tensor([1, 0.25, 0.25, 0.25]))
+                else:
+                    exps, logs1 = algo.collect_experiences()
+
             logs2 = algo.update_parameters(exps)
             logs = {**logs1, **logs2}
             update_end_time = time.time()
@@ -277,21 +296,17 @@ if __name__ == "__main__":
                 data += num_frames_per_episode.values()
                 header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm"]
                 if args.algo == "ppo2":
-
                     data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"]]
                     txt_logger.info(
                     "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f}"
                     .format(*data))
                     # txt_logger.info(algo.latent_z)
-                    
 
                 else:
                     data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"]]
                     txt_logger.info(
                     "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}"
                     .format(*data))
-                tb_writer.add_scalar('env_swap', env_swap, num_frames)
-                env_swap = 0
 
 
 
@@ -315,6 +330,51 @@ if __name__ == "__main__":
                     status["vocab"] = preprocess_obss.vocab.vocab
                 utils.save_status(status, model_dir)
                 txt_logger.info("Status saved")
+
+            # save gif
+            if args.save_interval > 0 and update % args.save_interval == 0:
+                    frames = []
+                    # result = algo.save_gif(update, model_dir)
+                    env = algo.get_env()
+                    if args.algo == "ppo2":
+                        agent = utils.Agent2(env.observation_space, env.action_space, model_dir,
+                    argmax=args.argmax, use_memory=args.memory, use_text=args.text)
+                    else:
+                        agent = utils.Agent(env.observation_space, env.action_space, model_dir,
+                    argmax=args.argmax, use_memory=args.memory, use_text=args.text)
+                    obs, _ = env.reset()
+                    print("Environment loaded\n")
+                    count = 0
+                    # obs, _ = env.reset()
+                    if args.gif:
+                        while True:
+                            # env.render()
+                            frames.append(np.moveaxis(env.get_frame(), 2, 0))
+                            if args.algo == "ppo2":
+                                try:
+                                    latent_z = env.get_ground_truth_latent_z()
+                                except:
+                                    latent_z = torch.tensor([1, 0.25, 0.25, 0.25])
+                                action = agent.get_action(obs,latent_z=latent_z)
+                            else:
+                                action = agent.get_action(obs)
+
+                            obs, reward, terminated, truncated, _ = env.step(action)
+                            done = terminated | truncated
+                            agent.analyze_feedback(reward, done)
+                            count += 1
+
+                            if count > 1000:
+                                print(count)
+                                break
+                            if done:
+                                print('done')
+                                break
+                    print("Saving gif... ", end="")
+                    gif_path = os.path.join(model_dir, f"{str(update)}:{str(num_frames)}-{str(count)}.gif")
+                    write_gif(np.array(frames), gif_path, fps=1/args.pause)
+                    print(gif_path)
+                    txt_logger.info("gif saved")
         swap_id = 0
         env_names = ["doorkey", "cross", "obstacle", "goodlava"]
         env_colors = {"doorkey": "red", "cross": "blue", "obstacle": "green", "goodlava": "yellow"}  # Example colors for each environment        swap_seq_data=[]

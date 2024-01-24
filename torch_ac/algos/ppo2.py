@@ -1,7 +1,6 @@
 import numpy
 import torch
 import torch.nn.functional as F
-
 from torch_ac.algos.base import BaseAlgo
 import numpy as np
 class PPO2Algo(BaseAlgo):
@@ -39,7 +38,8 @@ class PPO2Algo(BaseAlgo):
 
                 
 
-        
+    
+
 
 
     def update_parameters(self, exps):
@@ -70,11 +70,21 @@ class PPO2Algo(BaseAlgo):
                 batch_internal_loss = 0
 
                 # Initialize memory                
-
+                def gen_fake_latent(num_procs=16):
+                        latent_zs = []
+                        for _ in range(num_procs):
+                            latent_zs.append(torch.tensor([1, 0.25, 0.25, 0.25])) #hard coded
+                        latent_z = torch.stack(latent_zs)
+                        return latent_z
                 if self.acmodel.recurrent:
                     memory = exps.memory[inds]
                 # print('inds',inds.shape[0])
-                self.latent_z = self.env.get_ground_truth_latent_z(self.num_procs)
+                try:
+                    self.latent_z = self.env.get_ground_truth_latent_z(self.num_procs)
+                except:
+                    
+                    self.latent_z = gen_fake_latent(self.num_procs)
+
                 latent_zs = self.latent_z
                 #expend latent_zs to match the size of actor_embedding
                 # while size of latent_zs < size of inds.shape[0]
