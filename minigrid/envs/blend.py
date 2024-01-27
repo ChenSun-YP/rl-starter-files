@@ -31,10 +31,10 @@ class BlendedEnv(MiniGridEnv):
         self.swap_sqeuence = swap_seq
         self.swap_seq_idx = 0 
         self.envs = [
-            DoorKeyEnv(size=5, max_steps=max_steps, **kwargs),
-            CrossingEnv(size=5, max_steps=max_steps, **kwargs),
-            DynamicObstaclesEnv(size=5, max_steps=max_steps, **kwargs),
-            CrossinggoodlavaEnv(size=5, max_steps=max_steps, **kwargs)
+            DoorKeyEnv(size=7, max_steps=max_steps, **kwargs),
+            CrossingEnv(size=7, max_steps=max_steps, **kwargs),
+            DynamicObstaclesEnv(size=7, max_steps=max_steps, **kwargs),
+            CrossinggoodlavaEnv(size=7, max_steps=max_steps, **kwargs)
 
 
         ]

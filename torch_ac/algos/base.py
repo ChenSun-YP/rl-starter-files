@@ -323,6 +323,7 @@ class BaseAlgo(ABC):
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
             with torch.no_grad():
                 if self.acmodel.recurrent:
+                    # print('base',batch_latent_z)
                     dist, value, memory = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1),latent_z=batch_latent_z)
                 else:
                     dist, value = self.acmodel(preprocessed_obs,latent_z=latent_z)
@@ -503,7 +504,8 @@ class BaseAlgo(ABC):
         imageio.mimsave(model_dir + update_name + '.gif', frames, duration=1/30)
             
     def get_env(self):
-        return self.env.get_main_env()
+        env , env_idx=  self.env.get_main_env()
+        return env , env_idx
         
 
     # In your main thread, you can call this function with your model and environment

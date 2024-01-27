@@ -133,10 +133,26 @@ class ParallelEnv(gym.Env):
         latent_zs = []
         # the first one is the main process
         latent_zs.append(self.envs[0].get_ground_truth_latent_z())
+        # print('peny',self.envs[0].get_ground_truth_latent_z())
+
         for i in range(num_proc-1):
             self.locals[i].send(("get_ground_truth_latent_z", None))
+
             latent_zs.append(self.locals[i].recv())
+
         latent_zs = torch.stack(latent_zs)
+        return latent_zs
+    def get_ground_truth_env(self):
+        """
+        Sends a command to get the ground truth latent z in a specific subprocess.
+
+        Parameters:
+        env_index : int
+            The index of the environment to swap.
+        """
+        # the first one is the main process
+        return self.envs[0].current_env_idx
+
 
 
     # def get_fix_latent_z(self,num_proc):
@@ -156,7 +172,7 @@ class ParallelEnv(gym.Env):
     def get_main_env(self):
 
         # the first one is the main process
-        return self.envs[0]
+        return self.envs[0] , self.envs[0].current_env_idx
 
 
 

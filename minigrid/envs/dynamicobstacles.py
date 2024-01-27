@@ -160,7 +160,7 @@ class DynamicObstaclesEnv(MiniGridEnv):
 
         # If the agent tried to walk over an obstacle or wall
         if action == self.actions.forward and not_clear:
-            reward = -0.05
+            reward = -1
             terminated = True
             return obs, reward, terminated, truncated, info
 

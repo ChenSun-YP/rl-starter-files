@@ -201,14 +201,16 @@ class PPO2Algo(BaseAlgo):
 
 
         # Log some values
-
+        env = self.env.get_ground_truth_env()
+        print('env',env)
         logs = {
             "entropy": numpy.mean(log_entropies),
             "value": numpy.mean(log_values),
             "policy_loss": numpy.mean(log_policy_losses),
             "value_loss": numpy.mean(log_value_losses),
             "grad_norm": numpy.mean(log_grad_norms),
-            "world_loss": numpy.mean(log_world_losses)
+            "world_loss": numpy.mean(log_world_losses),
+            "env": env,
         }
 
         return logs

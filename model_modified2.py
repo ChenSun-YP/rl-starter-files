@@ -145,6 +145,7 @@ class ACModel(nn.Module, torch_ac.RecurrentACModel):
         critic_embedding = self.critic_fc1(embedding)
         # print('actor_embedding',actor_embedding.shape)
         # print('latent_z_batched',latent_z_batched.shape)
+
         actor_combined = torch.cat((actor_embedding, latent_z_batched), dim=1)
         critic_combined = torch.cat((critic_embedding, latent_z_batched), dim=1)
 

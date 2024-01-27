@@ -97,8 +97,11 @@ if __name__ == "__main__":
 
 
     args.mem = args.recurrence > 1
-    swap_seq = np.random.randint(0,100,size=int(args.frames/args.interval))
-    # make swap a fixed random sequence like [0,1,2,3,0,1,2,3,0,1,2,3] with lenghth of arfs.frames/args.interval, everyrun shoudl have the same swap sequence
+    rng = np.random.RandomState(args.seed)
+    swap_seq = rng.randint(0, 100, size=int(args.frames/args.interval))
+    env_names = ["doorkey", "cross", "obstacle", "goodlava"]
+
+    # make swap a fixed random sequence like [0,1,2,3,0,1,2,3,0,1,2,3] with length of args.frames/args.interval, every run should have the same swap sequence
     # swap_seq = [0,1,2,3,0,1,2,3,0,1,2,3]
     # swap_seq = [37, 86, 30, 50, 20, 83, 60, 52, 75, 75, 27, 28, 91, 38, 15, 36, 43, 50, 97, 80, 14, 36, 62, 89, 40, 78, 89, 23, 50, 54, 3, 85, 0, 56, 5, 35, 16, 28, 21, 81, 94, 69, 86, 21, 94, 21, 78, 64, 60, 43, 65, 43, 25, 18, 37, 20, 81, 89, 89, 37, 13, 58, 44, 4, 83, 29, 19, 65, 18, 74, 96, 55, 60, 10, 54, 62, 59, 6, 59, 99, 60, 85, 81, 43, 58, 94, 60, 8, 70, 64, 42, 2, 98, 53, 2, 62, 11, 40, 58, 40, 4, 32, 26, 40, 78, 43, 17, 42, 71, 28, 77, 48, 98, 20, 93, 85, 95, 0, 9, 11, 21, 17, 20, 91, 51, 15, 96, 76, 3, 82, 62, 47, 25, 73, 36, 7, 96, 96, 51, 0, 9, 63, 97, 28, 56, 80, 51, 56, 58, 4, 91, 66, 56, 53, 30, 99, 79, 60, 57, 6, 95, 79, 54, 42, 2, 37, 67, 91, 47, 15, 29, 64, 12, 11, 77, 73, 51, 40, 79, 82, 42, 37, 71, 85, 0, 29, 65, 12, 78, 73, 31, 77, 12, 86, 96, 44, 49, 97, 25, 4]
 
@@ -294,30 +297,32 @@ if __name__ == "__main__":
                 data += rreturn_per_episode.values()
                 header += ["num_frames_" + key for key in num_frames_per_episode.keys()]
                 data += num_frames_per_episode.values()
-                header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm"]
+                header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm","world_loss","env"]
                 if args.algo == "ppo2":
-                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"]]
+                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"],logs["env"]]
                     txt_logger.info(
-                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f}"
+                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f} env {:d}"
                     .format(*data))
                     # txt_logger.info(algo.latent_z)
 
                 else:
-                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"]]
+                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["env"]]
                     txt_logger.info(
-                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}"
+                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}  env {:d}"
                     .format(*data))
 
 
 
                 header += ["return_" + key for key in return_per_episode.keys()]
                 data += return_per_episode.values()
+                # header+=[ "world_loss","env"]
+
 
                 if status["num_frames"] == 0:
                     csv_logger.writerow(header)
                 csv_logger.writerow(data)
                 csv_file.flush()
-
+                
                 for field, value in zip(header, data):
                     tb_writer.add_scalar(field, value, num_frames)
 
@@ -335,7 +340,7 @@ if __name__ == "__main__":
             if args.save_interval > 0 and update % args.save_interval == 0:
                     frames = []
                     # result = algo.save_gif(update, model_dir)
-                    env = algo.get_env()
+                    env , env_idx = algo.get_env()
                     if args.algo == "ppo2":
                         agent = utils.Agent2(env.observation_space, env.action_space, model_dir,
                     argmax=args.argmax, use_memory=args.memory, use_text=args.text)
@@ -343,6 +348,7 @@ if __name__ == "__main__":
                         agent = utils.Agent(env.observation_space, env.action_space, model_dir,
                     argmax=args.argmax, use_memory=args.memory, use_text=args.text)
                     obs, _ = env.reset()
+                    env_name =env.get_env_name
                     print("Environment loaded\n")
                     count = 0
                     # obs, _ = env.reset()
@@ -371,12 +377,15 @@ if __name__ == "__main__":
                                 print('done')
                                 break
                     print("Saving gif... ", end="")
-                    gif_path = os.path.join(model_dir, f"{str(update)}:{str(num_frames)}-{str(count)}.gif")
+
+                    env_name = env_names[env_idx]
+                    print(env_name)
+
+                    gif_path = os.path.join(model_dir, f"{str(update)}{str(env_name)} {str(env_idx)}:{str(num_frames)}-{str(count)}.gif")
                     write_gif(np.array(frames), gif_path, fps=1/args.pause)
                     print(gif_path)
                     txt_logger.info("gif saved")
         swap_id = 0
-        env_names = ["doorkey", "cross", "obstacle", "goodlava"]
         env_colors = {"doorkey": "red", "cross": "blue", "obstacle": "green", "goodlava": "yellow"}  # Example colors for each environment        swap_seq_data=[]
 
         for i in range(args.frames):

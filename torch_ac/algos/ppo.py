@@ -116,13 +116,16 @@ class PPOAlgo(BaseAlgo):
                 log_grad_norms.append(grad_norm)
 
         # Log some values
+        env = self.env.get_ground_truth_env()
 
         logs = {
             "entropy": numpy.mean(log_entropies),
             "value": numpy.mean(log_values),
             "policy_loss": numpy.mean(log_policy_losses),
             "value_loss": numpy.mean(log_value_losses),
-            "grad_norm": numpy.mean(log_grad_norms)
+            "grad_norm": numpy.mean(log_grad_norms),
+            "env": env
+
         }
 
         return logs
