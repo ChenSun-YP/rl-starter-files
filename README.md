@@ -56,6 +56,9 @@ python -m scripts.train --algo ppo2 --env  MiniGrid-BlendCrossDoorkey-v0 --model
 
 python -m scripts.train_mult --algo ppo --env MiniGrid-BlendCrossDoorkey-v0 --model t800blendpposeed --save-interval 10 --frames 100000 --num-models 1
 
+python -m scripts.train_mult --algo ppo2 --env MiniGrid-BlendCrossDoorkey-v0 --model ppo2envlabel3  --save-interval 5 --frames 100000 --num-models 1  --interval 100  --gif 1
+
+python -m scripts.train_mult --algo ppo --env MiniGrid-BlendCrossDoorkey-v0 --model 20240213ppofastswaptestcorrectswapppppppppppp  --save-interval 5 --frames 16384 --num-models 1  --interval 128  --gif 1
 ```
 
 <p align="center"><img src="README-rsrc/train-terminal-logs.png"></p>
@@ -66,8 +69,9 @@ python -m scripts.train_mult --algo ppo --env MiniGrid-BlendCrossDoorkey-v0 --mo
 python -m scripts.visualize --env MiniGrid-DoorKey-5x5-v0 --model DoorKey
 python -m scripts.visualize --env MiniGrid-LavaCrossingS9N1-v0 --model DoorKey
 
-python -m scripts.visualize --env MiniGrid-BlendCrossDoorkey-v0  --model Blend
-python -m scripts.visualize --env MiniGrid-DoorKey-5x5-v0 MiniGrid-BlendCrossDoorkey-v0  --model Blend
+python -m scripts.visualize --env MiniGrid-BlendCrossDoorkey-v0  --model 20240213ppofastswaptestcorrectswapppppppppppp1
+
+python -m scripts.visualize --env MiniGrid-DoorKey-5x5-v0 MiniGrid-BlendCrossDoorkey-v0  --model 20240213ppofastswaptestcorrectswapppppppppppp  
 
 ```
 
@@ -82,7 +86,7 @@ python3 -m scripts.evaluate --env MiniGrid-LavaCrossingS9N1-v0 --model DoorKey
 python3 -m scripts.evaluate --env MiniGrid-BlendCrossDoorkey-v0 --model Blendnoswap
 python3 -m scripts.evaluate --env MiniGrid-LavaCrossingS9N1-v0 --model Blend1swap
 
-python3 -m scripts.evaluate --env MiniGrid-BlendCrossDoorkey-v0  --model Blend1swap
+python -m scripts.evaluate --env MiniGrid-BlendCrossDoorkey-v0  --model 20240213ppofastswaptestcorrectswapppppppppppp1
 ```
 
 <p align="center"><img src="README-rsrc/evaluate-terminal-logs.png"></p>

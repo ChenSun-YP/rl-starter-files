@@ -16,16 +16,19 @@ import torch
 class BlendedEnv(MiniGridEnv):
     def __init__(
             self,
-            t=15,
+            t=100,
             size=3,
             max_steps=None,
             agent_view_size: int = 7,
             ground_truth_task=True, # the ground truth task is the task that the agent is trained on
-            swap_seq = [0,1,2,3], # the sequence of the envs that the agent will be trained on
+            swap_seq = [1,2,3,4], # the sequence of the envs that the agent will be trained on
             **kwargs):
         # global blended_instance
         # blended_instance = self
         # Create a list of environments
+        # if len(swap_seq) == 0:
+        #     # generate a random swap sequence with lenghth of 20
+        #     swap_seq = np.random.randint(0, 4, 20)
         print('init blended env with t', t)
         self.agent_view_size= 5
         self.swap_sqeuence = swap_seq
@@ -89,15 +92,14 @@ class BlendedEnv(MiniGridEnv):
         obs, reward, done, truncated, info = self.current_env.step(action)
         if not self.observation_space.contains(obs):
             logger.error(f"Observation {obs} is not within the observation space.{self.observation_space}")
-        if done:
-            return obs, reward, done, truncated, info
 
-        # If it's time to swap the environment
+        # if done or truncated:
+        #     # If the episode is done, reset the current environment
+        #     obs = self.reset()
         #if the frame is a multiple of t, swap the environment  
         #fetch the current frame from the current env
 
         if self.step_count % self.t == 0:
-            print('swap happen in blend.py on step', self.step_count)
 
             #render the current env save as a image
             # self.current_env.render_mode = 'rgb_array'
@@ -105,45 +107,12 @@ class BlendedEnv(MiniGridEnv):
             # self.render_and_save(self.current_env,save_path='before.png')
             next_env_idx = self.swap_sqeuence[self.swap_seq_idx] % len(self.envs)
             self.swap_seq_idx += 1
+            prev_name =self.current_env.__class__.__name__
             obs = self.swap_env(obs,next_env_idx)
-            # self.render() 
-
-            # self.current_env.render_mode = 'rgb_array'
-
-            # x1= self.render()
-            # if  x.all() == x1.all():
-            #     print('equal render')
-            # else:
-            #     print('inqueal')
-            #render the swapped env save as a image
-            # self.render_and_save(self.current_env,save_path='after.png')
-            # stop and exit
-
-            # compare obs_before and obs to see if the latent z is updated
-            # if obs_before['image'].all() == obs['image'].all():
-            #     print('obs not updated')
-            # else:
-            #     print('obs updated')
-
-            # # Compare observation images
-            # if not np.array_equal(obs_before['image'], obs['image']):
-            #     print('Image changed')
-            
-            # Compare ground_truth_z
-            # if not np.array_equal(obs_before['ground_truth_z'], obs['ground_truth_z']):
-            #     print('ground_truth_z changed')
-
-            # Combine the checks
-            # if algo is ppo2
-            
-            # if np.array_equal(obs_before['image'], obs['image']) and np.array_equal(obs_before['ground_truth_z'], obs['ground_truth_z']):
-            #     print('No significant change detected')
-            # logger.info(f"step Swapping environment to {action, self.step_count , self.t,self.current_env.__class__.__name__}")
+            print('swap happen in blend.py on step', self.step_count,'before env is',prev_name,'after this frame is',self.current_env.__class__.__name__)
+            # trigger a log update outside to start color of the current env!
 
 
-        # Return the tasks and current task
-        # tasks = [env.__class__.__name__ for env in self.envs]
-        # current_task = self.current_env.__class__.__name__
         return obs, reward, done, truncated, info
     def swap_env(self, obs,next_env_idx):
         # gen a unique swap id +current actual timestamp for logging purpose for everytime this is invoked with same seed
@@ -190,9 +159,8 @@ class BlendedEnv(MiniGridEnv):
         # self.render() 
         
         #print the old env latent z and updated one to check if it is updated
-        # print(old,'switched to',self.current_env.ground_truth_z) todo why is this poping mulitple times?
-
-        print(f" swap {before ,self.get_env_name(),swap_id}")
+        # print(old,'switched to',self.current_env.ground_truth_z) 
+        # print(f" swap {before ,self.get_env_name(),swap_id}")
 
         return new_obs
     # def swap_active_env(self):
