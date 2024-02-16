@@ -29,6 +29,7 @@ class BlendedEnv(MiniGridEnv):
         # if len(swap_seq) == 0:
         #     # generate a random swap sequence with lenghth of 20
         #     swap_seq = np.random.randint(0, 4, 20)
+        print('swap_seq',swap_seq)
         print('init blended env with t', t)
         self.agent_view_size= 5
         self.swap_sqeuence = swap_seq
@@ -51,9 +52,6 @@ class BlendedEnv(MiniGridEnv):
             self.envs[1].ground_truth_z = torch.tensor([0.25, 0.25, 0.25, 1])
             self.envs[2].ground_truth_z = torch.tensor([0.25, 1, 0.25, 0.25])
             self.envs[3].ground_truth_z = torch.tensor([0.25, 0.25, 1, 0.25])
-
-
-
 
 
 
@@ -109,6 +107,7 @@ class BlendedEnv(MiniGridEnv):
             self.swap_seq_idx += 1
             prev_name =self.current_env.__class__.__name__
             obs = self.swap_env(obs,next_env_idx)
+            # pring worker number
             print('swap happen in blend.py on step', self.step_count,'before env is',prev_name,'after this frame is',self.current_env.__class__.__name__)
             # trigger a log update outside to start color of the current env!
 
@@ -220,16 +219,14 @@ class BlendedEnv(MiniGridEnv):
         return self.current_env._gen_mission()
     def get_env_name(self):
         return self.current_env.__class__.__name__
-        if self.current_env_idx == None:
-            return "no"
-        if self.current_env_idx == 0:
-            return "doorkey"
-        elif self.current_env_idx == 1:
-            return "crossing"
-        elif self.current_env_idx == 2:
-            return "dynamicobstacles"
-        else:
-            return "no"
+
     def get_ground_truth_latent_z(self):
         return self.current_env.ground_truth_z
+    def get_ground_truth_env(self):
+        return self.current_env_idx
+    def get_ground_truth_env_label(self):
+        return self.current_env.__class__.__name__
+    def get_step(self):
+        return self.step_count
+    
         

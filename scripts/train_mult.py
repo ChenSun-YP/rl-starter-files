@@ -100,12 +100,12 @@ if __name__ == "__main__":
     rng = np.random.RandomState(args.seed)
     swap_seq = rng.randint(0, 100, size=int(args.frames/args.interval))
     env_names = ["doorkey", "cross", "obstacle", "goodlava"]
-
     # make swap a fixed random sequence like [0,1,2,3,0,1,2,3,0,1,2,3] with length of args.frames/args.interval, every run should have the same swap sequence
     # swap_seq = [0,1,2,3,0,1,2,3,0,1,2,3]
     # swap_seq = [37, 86, 30, 50, 20, 83, 60, 52, 75, 75, 27, 28, 91, 38, 15, 36, 43, 50, 97, 80, 14, 36, 62, 89, 40, 78, 89, 23, 50, 54, 3, 85, 0, 56, 5, 35, 16, 28, 21, 81, 94, 69, 86, 21, 94, 21, 78, 64, 60, 43, 65, 43, 25, 18, 37, 20, 81, 89, 89, 37, 13, 58, 44, 4, 83, 29, 19, 65, 18, 74, 96, 55, 60, 10, 54, 62, 59, 6, 59, 99, 60, 85, 81, 43, 58, 94, 60, 8, 70, 64, 42, 2, 98, 53, 2, 62, 11, 40, 58, 40, 4, 32, 26, 40, 78, 43, 17, 42, 71, 28, 77, 48, 98, 20, 93, 85, 95, 0, 9, 11, 21, 17, 20, 91, 51, 15, 96, 76, 3, 82, 62, 47, 25, 73, 36, 7, 96, 96, 51, 0, 9, 63, 97, 28, 56, 80, 51, 56, 58, 4, 91, 66, 56, 53, 30, 99, 79, 60, 57, 6, 95, 79, 54, 42, 2, 37, 67, 91, 47, 15, 29, 64, 12, 11, 77, 73, 51, 40, 79, 82, 42, 37, 71, 85, 0, 29, 65, 12, 78, 73, 31, 77, 12, 86, 96, 44, 49, 97, 25, 4]
 
     for model_idx in range(args.num_models):
+        exist_header = 0
         # Adjust seed for each model
         current_seed = args.seed + model_idx
         utils.seed(current_seed)
@@ -262,8 +262,6 @@ if __name__ == "__main__":
             #         envs[0].swap_env(obs)
             #         print(envs[0].get_env_name())
             #         env_swap = 1
-
-
             if args.env == 'MiniGrid-BlendCrossDoorkey-v0':
                 if args.algo == "ppo2":
                     exps, logs1 = algo.collect_experiences_latent()
@@ -274,8 +272,8 @@ if __name__ == "__main__":
                     exps, logs1 = algo.collect_experiences_latent(latent_z=torch.tensor([1, 0.25, 0.25, 0.25]))
                 else:
                     exps, logs1 = algo.collect_experiences()
-
             logs2 = algo.update_parameters(exps)
+            print(logs2['env'])
             logs = {**logs1, **logs2}
             update_end_time = time.time()
 
@@ -297,34 +295,41 @@ if __name__ == "__main__":
                 data += rreturn_per_episode.values()
                 header += ["num_frames_" + key for key in num_frames_per_episode.keys()]
                 data += num_frames_per_episode.values()
-                header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm","world_loss","env"]
                 if args.algo == "ppo2":
-                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"],logs["env"]]
+                    header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm","world_loss","env","env_label"]
+
+                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["world_loss"],logs["env"],logs["env_label"]]
                     txt_logger.info(
-                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f} env {:d}"
+                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}| wl {:.3f} env {:d} env_label {:s}"
                     .format(*data))
                     # txt_logger.info(algo.latent_z)
 
                 else:
-                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["env"]]
+                    header += ["entropy", "value", "policy_loss", "value_loss", "grad_norm","env","env_label"]
+
+                    data += [logs["entropy"], logs["value"], logs["policy_loss"], logs["value_loss"], logs["grad_norm"],logs["env"],logs["env_label"]]
                     txt_logger.info(
-                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}  env {:d}"
+                    "U {} | F {:06} | FPS {:04.0f} | D {} | rR:μσmM {:.2f} {:.2f} {:.2f} {:.2f} | F:μσmM {:.1f} {:.1f} {} {} | H {:.3f} | V {:.3f} | pL {:.3f} | vL {:.3f} | ∇ {:.3f}  env {:d} env_label {:s}"
                     .format(*data))
 
 
-
-                header += ["return_" + key for key in return_per_episode.keys()]
-                data += return_per_episode.values()
+                # header += ["return_" + key for key in return_per_episode.keys()]
+                # data += return_per_episode.values()
                 # header+=[ "world_loss","env"]
 
 
-                if status["num_frames"] == 0:
+                if status["num_frames"] == 0  and not exist_header:
                     csv_logger.writerow(header)
+                    exist_header = 1
                 csv_logger.writerow(data)
                 csv_file.flush()
                 
                 for field, value in zip(header, data):
-                    tb_writer.add_scalar(field, value, num_frames)
+                        # print(f"{field}: {value}")
+                        if isinstance(value, str):
+                            tb_writer.add_text(field, value, num_frames)
+                        else:
+                            tb_writer.add_scalar(field, value, num_frames)
 
             # Save status
 
@@ -337,10 +342,11 @@ if __name__ == "__main__":
                 txt_logger.info("Status saved")
 
             # save gif
-            if args.save_interval > 0 and update % args.save_interval == 0:
+            
+            if args.gif  and args.save_interval > 0 and update % args.save_interval == 0:
                     frames = []
                     # result = algo.save_gif(update, model_dir)
-                    env , env_idx = algo.get_env()
+                    env , env_idx = algo.get_env_copy()
                     if args.algo == "ppo2":
                         agent = utils.Agent2(env.observation_space, env.action_space, model_dir,
                     argmax=args.argmax, use_memory=args.memory, use_text=args.text)
@@ -385,20 +391,23 @@ if __name__ == "__main__":
                     write_gif(np.array(frames), gif_path, fps=1/args.pause)
                     print(gif_path)
                     txt_logger.info("gif saved")
+
+                    # delete this env object
+                    del env
         swap_id = 0
         env_colors = {"doorkey": "red", "cross": "blue", "obstacle": "green", "goodlava": "yellow"}  # Example colors for each environment        swap_seq_data=[]
 
-        for i in range(args.frames):
-            # swap at every interval *16 frames
+        # for i in range(args.frames):
+        #     # swap at every interval *16 frames
 
-            if i % (args.interval * 16) == 0:
-                swap_id = swap_id + 1
+        #     if i % (args.interval * 16) == 0:
+        #         swap_id = swap_id + 1
                 
-            env_name = env_names[swap_seq[swap_id] % 4]
-            # print("num_frames:", i, "env:", env_name)
+        #     env_name = env_names[swap_seq[swap_id] % 4]
+        #     # print("num_frames:", i, "env:", env_name)
 
-            env_id = env_names.index(env_name)
-            tb_writer.add_scalar('Environment', env_id, i)
+        #     env_id = env_names.index(env_name)
+        #     tb_writer.add_scalar('Environment', env_id, i)
 
 # import matplotlib.pyplot as plt
 # # Top Plot: Environment Indication
